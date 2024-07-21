@@ -1,0 +1,60 @@
+name: CI Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+
+  server-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20'
+          cache: true
+
+      - name: Build for Windows
+        run: GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ./temp/goprocess.exe .
+
+      - name: Build for Linux
+        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./temp/goprocess .
+
+      - name: Build
+        run: |
+          python release.py
+
+      - name: Upload server build
+        uses: actions/upload-artifact@v3
+        with:
+          name: server-artifact
+          path: |
+            ./temp
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [server-build]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download server build
+        uses: actions/download-artifact@v3
+        with:
+          name: server-artifact
+          path: ./temp
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{secrets.TOKEN}}
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
+#          body_path: ./build/changelog.md
+          draft: false
+          prerelease: false
+          files: |
+            ./temp/*
