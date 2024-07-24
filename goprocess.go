@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -21,12 +22,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/nxadm/tail"
 	"github.com/pizixi/goprocess/web"
 
 	"github.com/codeskyblue/kexec"
-	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/gorilla/websocket"
 	"github.com/natefinch/lumberjack"
 	"golang.org/x/text/encoding"
@@ -37,29 +38,39 @@ import (
 	"golang.org/x/text/encoding/traditionalchinese"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
-	"gorm.io/gorm"
 )
 
+// 定义Process结构体
 type Process struct {
-	ID         uint `gorm:"primaryKey"`
-	Name       string
-	Command    string
-	WorkDir    string
-	User       string
-	RetryCount int
-	AutoStart  bool
-	LogFile    string
-	// ManualStop bool
+	ID         uint   `json:"ID"`
+	Name       string `json:"Name"`
+	Command    string `json:"Command"`
+	WorkDir    string `json:"WorkDir"`
+	User       string `json:"User"`
+	RetryCount int    `json:"RetryCount"`
+	AutoStart  bool   `json:"AutoStart"`
+	LogFile    string `json:"LogFile"`
 }
 
+// 定义RuntimeProcess结构体
 type RuntimeProcess struct {
 	Process
-	PID        int
-	Status     string
-	ManualStop bool // 将 ManualStop 移动到 RuntimeProcess 结构体中
+	PID        int    `json:"PID"`
+	Status     string `json:"Status"`
+	ManualStop bool   `json:"ManualStop"`
 }
 
-var db *gorm.DB
+type Config struct {
+	HTTPAuth struct {
+		Enabled  bool   `json:"enabled"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+	} `json:"httpauth"`
+	Addr string `json:"addr"`
+}
+
+// 全局变量
+var config Config
 var processes map[uint]*kexec.KCommand
 var runtimeProcesses map[uint]*RuntimeProcess
 var mu sync.Mutex
@@ -71,108 +82,182 @@ var upgrader = websocket.Upgrader{
 
 var sessions = make(map[string]string)
 
-func authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		sessionID, err := c.Cookie("session_id")
-		if err != nil || sessions[sessionID] == "" {
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
-			return
+// JSON文件路径
+const processesFilePath = "processes.json"
+const configFilePath = "./goprocess.json"
+
+// 读取进程数据从JSON文件
+func readProcessesFromJSON() error {
+	file, err := os.ReadFile(processesFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// 如果文件不存在,创建一个空的JSON文件
+			return writeProcessesToJSON()
 		}
-		c.Next()
+		return err
+	}
+
+	var processes []Process
+	if err := json.Unmarshal(file, &processes); err != nil {
+		return err
+	}
+
+	runtimeProcesses = make(map[uint]*RuntimeProcess)
+	for _, p := range processes {
+		rp := &RuntimeProcess{
+			Process:    p,
+			PID:        0,
+			Status:     "stopped",
+			ManualStop: false,
+		}
+		runtimeProcesses[p.ID] = rp
+	}
+
+	return nil
+}
+
+// 写入进程数据到JSON文件
+func writeProcessesToJSON() error {
+	var processes []Process
+	for _, rp := range runtimeProcesses {
+		processes = append(processes, rp.Process)
+	}
+
+	data, err := json.MarshalIndent(processes, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(processesFilePath, data, 0644)
+}
+
+func readConfigFromJSON() error {
+	// 尝试读取配置文件
+	file, err := os.ReadFile(configFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// 如果配置文件不存在, 创建一个带有默认值的配置文件
+			defaultConfig := Config{
+				HTTPAuth: struct {
+					Enabled  bool   `json:"enabled"`
+					Username string `json:"username"`
+					Password string `json:"password"`
+				}{Enabled: false},
+				Addr: "127.0.0.1:11315",
+			}
+			config = defaultConfig
+			return writeConfigToJSON()
+		}
+		return err
+	}
+
+	// 解析配置文件
+	if err := json.Unmarshal(file, &config); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeConfigToJSON() error {
+	// 序列化配置并写入文件
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configFilePath, data, 0644)
+}
+
+// 认证中间件
+func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		sessionID, err := c.Cookie("session_id")
+		if err != nil || sessions[sessionID.Value] == "" {
+			return c.Redirect(http.StatusSeeOther, "/login")
+		}
+		return next(c)
 	}
 }
 
+// 创建一个适配器，将 http.FileSystem 转换为 fs.FS
+type httpFSAdapter struct {
+	httpFS http.FileSystem
+}
+
+func (h httpFSAdapter) Open(name string) (fs.File, error) {
+	return h.httpFS.Open(name)
+}
+
 func GoprocessMain() {
-	var err error
-	db, err = gorm.Open(sqlite.Open("processes.db"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
+	// 读取配置文件
+	if err := readConfigFromJSON(); err != nil {
+		panic("failed to read config from JSON: " + err.Error())
 	}
-	db.AutoMigrate(&Process{})
+
+	// 初始化进程数据
+	if err := readProcessesFromJSON(); err != nil {
+		panic("failed to read processes from JSON: " + err.Error())
+	}
 
 	processes = make(map[uint]*kexec.KCommand)
-	runtimeProcesses = make(map[uint]*RuntimeProcess)
 
 	// 打开日志文件
 	file, err := os.OpenFile("goprocess.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("Failed to open gin.log: %v", err)
+		log.Fatalf("Failed to open goprocess.log: %v", err)
 	}
 	defer file.Close()
 	// 重定向标准输出到日志文件
 	log.SetOutput(file)
-	// 设置 Gin 的日志输出为文件和控制台
-	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 
-	r := gin.Default()
+	// 初始化Echo框架
+	e := echo.New()
 
-	// 不使用embed
-	// r.LoadHTMLFiles("index.html")
+	// 设置中间件
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	// 渲染嵌入的 HTML 文件
-	tmpl := template.Must(template.New("").ParseFS(web.ViewsFS, "views/*"))
-	r.SetHTMLTemplate(tmpl)
+	// 渲染嵌入的HTML文件
+	renderer := &TemplateRenderer{
+		templates: template.Must(template.New("").ParseFS(web.ViewsFS, "views/*")),
+	}
+	e.Renderer = renderer
+
 	// 设置静态文件服务
 	staticRootFS, _ := fs.Sub(web.StaticFS, "static")
-	r.StaticFS("/static", http.FS(staticRootFS))
+	httpFS := http.FS(staticRootFS)
+	e.StaticFS("/static", httpFSAdapter{httpFS})
 
-	// r.GET("/", func(c *gin.Context) {
-	// 	c.HTML(200, "index.html", nil)
-	// })
+	// 路由设置
+	e.GET("/login", loginHandler)
+	e.POST("/login", loginPostHandler)
+	e.GET("/logout", logoutHandler)
 
-	// r.GET("/processes", listProcesses)
-	// r.GET("/processes/:id", getProcess)
-	// r.POST("/process", createProcess)
-	// r.PUT("/process/:id", updateProcess)
-	// r.DELETE("/process/:id", deleteProcess)
-	// r.POST("/process/:id/start", startProcess)
-	// r.POST("/process/:id/stop", stopProcess)
-	// r.GET("/process/:id/logstream", logStream)
-	// r.GET("/ws", handleWebSocket)
-
-	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.html", gin.H{})
-	})
-
-	r.POST("/login", func(c *gin.Context) {
-		username := c.PostForm("username")
-		password := c.PostForm("password")
-
-		// 这里应该进行实际的用户验证
-		if username == "admin" && password == "admin999" {
-			sessionID := uuid.New().String()
-			sessions[sessionID] = username
-			c.SetCookie("session_id", sessionID, 8*3600, "/", "", false, true)
-			c.Redirect(http.StatusSeeOther, "/")
-		} else {
-			c.HTML(http.StatusUnauthorized, "login.html", gin.H{"error": "Invalid username or password"})
-		}
-	})
-
-	r.GET("/logout", func(c *gin.Context) {
-		sessionID, _ := c.Cookie("session_id")
-		delete(sessions, sessionID)
-		c.SetCookie("session_id", "", -1, "/", "", false, true)
-		c.Redirect(http.StatusSeeOther, "/login")
-	})
-
-	r.GET("/", authMiddleware(), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
-	})
-
-	// 为需要鉴权的路由添加 authMiddleware
-	authorized := r.Group("/", authMiddleware())
-	{
-		authorized.GET("/processes", listProcesses)
-		authorized.GET("/processes/:id", getProcess)
-		authorized.POST("/process", createProcess)
-		authorized.PUT("/process/:id", updateProcess)
-		authorized.DELETE("/process/:id", deleteProcess)
-		authorized.POST("/process/:id/start", startProcess)
-		authorized.POST("/process/:id/stop", stopProcess)
-		authorized.GET("/process/:id/logstream", logStream)
-		authorized.GET("/ws", handleWebSocket)
+	if config.HTTPAuth.Enabled {
+		// 受保护的路由
+		e.GET("/", homeHandler, authMiddleware)
+		e.GET("/processes", listProcessesHandler, authMiddleware)
+		e.GET("/processes/:id", getProcessHandler, authMiddleware)
+		e.POST("/process", createProcessHandler, authMiddleware)
+		e.PUT("/process/:id", updateProcessHandler, authMiddleware)
+		e.DELETE("/process/:id", deleteProcessHandler, authMiddleware)
+		e.POST("/process/:id/start", startProcessHandler, authMiddleware)
+		e.POST("/process/:id/stop", stopProcessHandler, authMiddleware)
+		e.GET("/process/:id/logstream", logStreamHandler, authMiddleware)
+		e.GET("/ws", handleWebSocket, authMiddleware)
+	} else {
+		// 不受保护的路由
+		e.GET("/", homeHandler)
+		e.GET("/processes", listProcessesHandler)
+		e.GET("/processes/:id", getProcessHandler)
+		e.POST("/process", createProcessHandler)
+		e.PUT("/process/:id", updateProcessHandler)
+		e.DELETE("/process/:id", deleteProcessHandler)
+		e.POST("/process/:id/start", startProcessHandler)
+		e.POST("/process/:id/stop", stopProcessHandler)
+		e.GET("/process/:id/logstream", logStreamHandler)
+		e.GET("/ws", handleWebSocket)
 	}
 
 	// 自动启动进程
@@ -181,25 +266,279 @@ func GoprocessMain() {
 	// 设置关闭处理
 	setupCloseHandler()
 
-	r.Run(":11315")
+	// 启动服务器
+	e.Logger.Fatal(e.Start(config.Addr))
 }
+
+// TemplateRenderer 是自定义的模板渲染器
+type TemplateRenderer struct {
+	templates *template.Template
+}
+
+// Render 渲染模板
+func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+// 处理函数...
+
+func loginHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "login.html", nil)
+}
+
+func loginPostHandler(c echo.Context) error {
+	username := c.FormValue("username")
+	password := c.FormValue("password")
+
+	if username == config.HTTPAuth.Username && password == config.HTTPAuth.Password {
+		sessionID := uuid.New().String()
+		sessions[sessionID] = username
+		cookie := new(http.Cookie)
+		cookie.Name = "session_id"
+		cookie.Value = sessionID
+		cookie.Expires = time.Now().Add(8 * time.Hour)
+		c.SetCookie(cookie)
+		return c.Redirect(http.StatusSeeOther, "/")
+	}
+	return c.Render(http.StatusUnauthorized, "login.html", map[string]interface{}{"error": "Invalid username or password"})
+}
+
+func logoutHandler(c echo.Context) error {
+	cookie, _ := c.Cookie("session_id")
+	if cookie != nil {
+		delete(sessions, cookie.Value)
+	}
+	c.SetCookie(&http.Cookie{
+		Name:    "session_id",
+		Value:   "",
+		Expires: time.Now().Add(-1 * time.Hour),
+	})
+	return c.Redirect(http.StatusSeeOther, "/login")
+}
+
+func homeHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "index.html", nil)
+}
+
+func listProcessesHandler(c echo.Context) error {
+	var rps []RuntimeProcess
+	for _, rp := range runtimeProcesses {
+		rps = append(rps, *rp)
+	}
+	sort.Slice(rps, func(i, j int) bool {
+		return rps[i].ID < rps[j].ID
+	})
+	return c.JSON(http.StatusOK, rps)
+}
+
+func getProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+	return c.JSON(http.StatusOK, rp)
+}
+
+func createProcessHandler(c echo.Context) error {
+	var p Process
+	if err := c.Bind(&p); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if p.RetryCount == 0 {
+		p.RetryCount = 3
+	}
+	p.ID = uint(len(runtimeProcesses) + 1)
+	rp := &RuntimeProcess{
+		Process:    p,
+		PID:        0,
+		Status:     "stopped",
+		ManualStop: false,
+	}
+	runtimeProcesses[p.ID] = rp
+	if err := writeProcessesToJSON(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save process"})
+	}
+	return c.JSON(http.StatusOK, rp)
+}
+
+func updateProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+	if err := c.Bind(&rp.Process); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := writeProcessesToJSON(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update process"})
+	}
+	return c.JSON(http.StatusOK, rp)
+}
+
+func deleteProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+
+	if rp.Status == "running" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Process is still running. Please stop it first."})
+	}
+
+	delete(runtimeProcesses, uint(id))
+	if err := writeProcessesToJSON(); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete process"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Process deleted"})
+}
+
+func startProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+
+	if rp.Status != "stopped" && rp.Status != "error" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Process %d is %s", rp.ID, rp.Status)})
+	}
+
+	rp.ManualStop = false
+	go startProcessById(uint(id))
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "starting", "message": "Process is being started"})
+}
+
+func stopProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+
+	if rp.Status == "stopped" {
+		return c.JSON(http.StatusOK, map[string]string{"status": "stopped", "message": "Process already stopped"})
+	}
+
+	rp.Status = "stopping"
+	rp.ManualStop = true
+	broadcastStatus(*rp)
+
+	go stopProcessByID(uint(id))
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "stopping", "message": "Process is being stopped"})
+}
+
+func logStreamHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := runtimeProcesses[uint(id)]
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+
+	c.Response().Header().Set("Content-Type", "text/event-stream")
+	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+
+	file, err := os.Open(rp.LogFile)
+	if err != nil {
+		log.Printf("无法打开文件: %v\n", err)
+		return err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Printf("获取文件信息失败: %v\n", err)
+		return err
+	}
+	byteCount := fileInfo.Size()
+	log.Printf("文件 '%s' 的字节数: %d\n", rp.LogFile, byteCount)
+
+	offset := calculateOffset(file, byteCount, 10000)
+	log.Println("offset:", offset)
+
+	if rp.LogFile == "" {
+		return c.String(http.StatusInternalServerError, "data: Log file not specified\n\n")
+	}
+
+	tailFile, err := tail.TailFile(rp.LogFile, tail.Config{
+		ReOpen:    true,
+		Follow:    true,
+		Location:  &tail.SeekInfo{Offset: offset, Whence: 2},
+		MustExist: false,
+		Poll:      true,
+	})
+
+	if err != nil {
+		return c.String(http.StatusInternalServerError, fmt.Sprintf("data: Failed to tail log file: %s\n\n", err.Error()))
+	}
+	defer tailFile.Cleanup()
+
+	c.Response().Writer.WriteHeader(http.StatusOK)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-c.Request().Context().Done():
+				return
+			case msg, ok := <-tailFile.Lines:
+				if !ok {
+					c.String(http.StatusInternalServerError, "data: Tail file closed unexpectedly\n\n")
+					return
+				}
+				if msg.Err != nil {
+					c.String(http.StatusInternalServerError, fmt.Sprintf("data: Error reading log file: %s\n\n", msg.Err.Error()))
+					return
+				}
+				line := strings.TrimRight(EnsureUTF8(msg.Text), "\r\n")
+				line = strings.TrimRight(EnsureUTF8(line), "\n")
+				if line != "" {
+					c.String(http.StatusOK, fmt.Sprintf("data: %s\n\n", line))
+					c.Response().Flush()
+				}
+			}
+		}
+	}()
+
+	<-c.Request().Context().Done()
+	<-done
+	return nil
+}
+
+func handleWebSocket(c echo.Context) error {
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
+
+	clients[ws] = true
+
+	for {
+		_, _, err := ws.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			delete(clients, ws)
+			return nil
+		}
+	}
+}
+
+// 辅助函数
 
 func initializeAndAutoStartProcesses() {
 	time.Sleep(2 * time.Second)
-	var ps []Process
-	db.Find(&ps)
-
-	for _, p := range ps {
-		rp := &RuntimeProcess{
-			Process:    p,
-			PID:        0,
-			Status:     "stopped",
-			ManualStop: false, // 初始化时设置为非手动停止状态
-		}
-		runtimeProcesses[p.ID] = rp
-		if p.AutoStart {
-			log.Printf("Starting process: %d \n", p.ID)
-			go startProcessById(p.ID)
+	for _, rp := range runtimeProcesses {
+		if rp.AutoStart {
+			log.Printf("Starting process: %d \n", rp.ID)
+			go startProcessById(rp.ID)
 		}
 	}
 }
@@ -228,101 +567,6 @@ func stopAllProcesses() {
 	}
 	wg.Wait()
 	log.Println("All processes stopped")
-}
-func listProcesses(c *gin.Context) {
-	var rps []RuntimeProcess
-	for _, rp := range runtimeProcesses {
-		rps = append(rps, *rp)
-	}
-	// 根据 ID 升序排序
-	sort.Slice(rps, func(i, j int) bool {
-		return rps[i].ID < rps[j].ID
-	})
-
-	c.JSON(http.StatusOK, rps)
-}
-
-func getProcess(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-	c.JSON(http.StatusOK, rp)
-}
-
-func createProcess(c *gin.Context) {
-	var p Process
-	if err := c.ShouldBindJSON(&p); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if p.RetryCount == 0 {
-		p.RetryCount = 3
-	}
-	db.Create(&p)
-	rp := &RuntimeProcess{
-		Process:    p,
-		PID:        0,
-		Status:     "stopped",
-		ManualStop: false, // 创建新进程时设置为非手动停止状态
-	}
-	runtimeProcesses[p.ID] = rp
-	c.JSON(http.StatusOK, rp)
-}
-func updateProcess(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-	if err := c.ShouldBindJSON(&rp.Process); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	db.Save(&rp.Process)
-	c.JSON(http.StatusOK, rp)
-}
-
-func deleteProcess(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-
-	if rp.Status == "running" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Process is still running. Please stop it first."})
-		return
-	}
-
-	db.Delete(&rp.Process)
-	delete(runtimeProcesses, uint(id))
-	c.JSON(http.StatusOK, gin.H{"message": "Process deleted"})
-}
-
-func startProcess(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-
-	if rp.Status != "stopped" && rp.Status != "error" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Process %d is %s", rp.ID, rp.Status)})
-		return
-	}
-
-	rp.ManualStop = false
-	// db.Save(&rp.Process) // 移除对数据库的保存操作，因为 ManualStop 不再持久化
-
-	c.JSON(http.StatusOK, gin.H{"status": "starting", "message": "Process is being started"})
-
-	go startProcessById(uint(id))
 }
 
 func startProcessById(id uint) {
@@ -410,28 +654,6 @@ func startProcessById(id uint) {
 	broadcastStatus(*rp)
 }
 
-func stopProcess(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-
-	if rp.Status == "stopped" {
-		c.JSON(http.StatusOK, gin.H{"status": "stopped", "message": "Process already stopped"})
-		return
-	}
-
-	rp.Status = "stopping"
-	rp.ManualStop = true
-	broadcastStatus(*rp)
-
-	c.JSON(http.StatusOK, gin.H{"status": "stopping", "message": "Process is being stopped"})
-
-	go stopProcessByID(uint(id))
-}
-
 func stopProcessByID(id uint) {
 	mu.Lock()
 	cmd, exists := processes[id]
@@ -484,90 +706,6 @@ func stopProcessByID(id uint) {
 	}
 }
 
-func logStream(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := runtimeProcesses[uint(id)]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Process not found"})
-		return
-	}
-
-	c.Header("Content-Type", "text/event-stream; charset=utf-8")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	file, err := os.Open(rp.LogFile)
-	if err != nil {
-		log.Printf("无法打开文件: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		log.Printf("获取文件信息失败: %v\n", err)
-		return
-	}
-	byteCount := fileInfo.Size()
-	log.Printf("文件 '%s' 的字节数: %d\n", rp.LogFile, byteCount)
-
-	// 展示最近10000行左右的日志
-	offset := calculateOffset(file, byteCount, 10000)
-	log.Println("offset:", offset)
-
-	if rp.LogFile == "" {
-		c.SSEvent("error", "Log file not specified")
-		return
-	}
-
-	tailFile, err := tail.TailFile(rp.LogFile, tail.Config{
-		ReOpen:    true,
-		Follow:    true,
-		Location:  &tail.SeekInfo{Offset: offset, Whence: 2},
-		MustExist: false,
-		Poll:      true,
-	})
-
-	if err != nil {
-		c.SSEvent("error", "Failed to tail log file: "+err.Error())
-		return
-	}
-	defer tailFile.Cleanup()
-
-	ctx := c.Request.Context()
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg, ok := <-tailFile.Lines:
-				if !ok {
-					c.SSEvent("error", "Tail file closed unexpectedly")
-					return
-				}
-				if msg.Err != nil {
-					c.SSEvent("error", "Error reading log file: "+msg.Err.Error())
-					return
-				}
-				line := strings.TrimRight(EnsureUTF8(msg.Text), "\r\n")
-				line = strings.TrimRight(EnsureUTF8(line), "\n")
-				if line != "" {
-					c.SSEvent("message", line)
-					c.Writer.Flush()
-				}
-			}
-		}
-	}()
-
-	<-ctx.Done()
-	<-done
-}
-
-// 计算偏移量
 func calculateOffset(file *os.File, byteCount int64, seekCount int64) int64 {
 	if byteCount <= seekCount {
 		return -byteCount
@@ -598,7 +736,6 @@ func calculateOffset(file *os.File, byteCount int64, seekCount int64) int64 {
 	return offset
 }
 
-// EnsureUTF8 尝试
 func EnsureUTF8(data string) string {
 	if utf8.ValidString(data) {
 		return data
@@ -607,7 +744,6 @@ func EnsureUTF8(data string) string {
 	if err == nil {
 		return utf8Data
 	}
-	// 如果不是UTF-8编码，则尝试将其转换为UTF-8编码
 	byteData := []byte(data)
 	encodings := []encoding.Encoding{
 		unicode.UTF8,
@@ -654,6 +790,7 @@ func EnsureUTF8(data string) string {
 
 	return ""
 }
+
 func transformString(data []byte, src, dest encoding.Encoding) (string, error) {
 	transformer := transform.Chain(src.NewDecoder(), dest.NewEncoder())
 	res, _, err := transform.Bytes(transformer, data)
@@ -664,30 +801,7 @@ func transformString(data []byte, src, dest encoding.Encoding) (string, error) {
 }
 
 var clients = make(map[*websocket.Conn]bool)
-
-// var broadcast = make(chan Process)
 var broadcast = make(chan RuntimeProcess)
-
-func handleWebSocket(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not open websocket connection"})
-		log.Println(err)
-		return
-	}
-	defer conn.Close()
-
-	clients[conn] = true
-
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			delete(clients, conn)
-			return
-		}
-	}
-}
 
 func broadcastStatus(rp RuntimeProcess) {
 	broadcast <- rp
