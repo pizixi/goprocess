@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Manager</title>
+    <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
+    <style>
+        .terminal {
+            background-color: #1d1f21;
+            color: #c5c8c6;
+            font-family: 'Source Code Pro', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .terminal::-webkit-scrollbar {
+            width: 10px;
+        }
+        .terminal::-webkit-scrollbar-track {
+            background: #282a2e;
+        }
+        .terminal::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 5px;
+        }
+        .terminal::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        .log-controls {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-controls label, .log-controls div {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        .log-controls input[type="checkbox"], .log-controls input[type="number"] {
+            margin-right: 5px;
+        }
+        .log-controls button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .log-controls button:hover {
+            background-color: #45a049;
+        }
+        .log-controls input[type="text"], .log-controls input[type="number"] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 5px;
+        }
+        .process-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-running { background-color: #67C23A; color: white; }
+        .status-stopped { background-color: #909399; color: white; }
+        .status-starting { background-color: #E6A23C; color: white; }
+        .status-stopping { background-color: #F56C6C; color: white; }
+        .status-error { background-color: #F56C6C; color: white; }
+        #addProcessBtn {
+            height: 38px;
+            line-height: 38px;
+            background-color: #009688;
+            border-color: #009688;
+        }
+        #addProcessBtn:hover {
+            background-color: #00877a;
+            border-color: #00877a;
+        }
+        .btn-custom {
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-custom:hover {
+            background-color: #34495e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .btn-custom:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: flex-start;
+        }
+        .action-btn {
+            flex: 0 1 auto;
+            margin: 2px !important;
+        }
+        @media screen and (max-width: 768px) {
+            .layui-table-cell.hidden-xs {
+                display: none;
+            }
+        }
+        .action-buttons .action-btn {
+            padding: 0 10px;
+        }
+        .action-buttons .action-btn i {
+            margin-right: 5px;
+        }
+        .button-container {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            padding: 0 0;
+            z-index: 1000;
+        }
+        .table-container {
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-container">
+    <div class="button-container">
+        <div class="layui-row">
+            <div class="layui-col-md12" style="text-align: right;">
+                <button class="layui-btn layui-btn-sm btn-custom" id="addProcessBtn">
+                    <i class="layui-icon">&#xe654;</i>添加进程
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="layui-table" id="processTable" lay-filter="processTable"></table>
+    </div>
+</div>
+
+<script src="/static/layui-v2.9.14/layui/layui.js"></script>
+<script>
+layui.use(['table', 'form', 'layer'], function(){
+    var table = layui.table,
+        form = layui.form,
+        layer = layui.layer;
+
+    var statusTpl = function(d){
+        return '<span class="process-status status-' + d.Status.toLowerCase() + '">' + d.Status + '</span>';
+    };
+
+    var barTpl = '<div class="action-buttons">' +
+    '<button class="layui-btn layui-btn-xs layui-btn-normal action-btn" lay-event="start"><i class="layui-icon">&#xe652;</i>启动</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-danger action-btn" lay-event="stop"><i class="layui-icon">&#xe651;</i>停止</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-primary action-btn" lay-event="log"><i class="layui-icon">&#xe60a;</i>日志</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-warm action-btn" lay-event="edit"><i class="layui-icon">&#xe642;</i>编辑</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-danger action-btn" lay-event="del"><i class="layui-icon">&#xe640;</i>删除</button>' +
+    '</div>';
+
+    // 初始化表格
+    table.render({
+        elem: '#processTable',
+        url: '/processes',
+        cols: getCols(),
+        page: { limit: 15, limits: [15, 30, 45, 60, 90] },
+        lineStyle: 'height: 60px;'
+    });
+
+    // 根据屏幕宽度返回列配置
+    function getCols() {
+    if (window.innerWidth < 768) {
+        return [[ 
+        {field: 'Name', title: '进程名'}, 
+        {field: 'Status', title: '状态', templet: statusTpl},
+        {fixed: 'right', title:'操作', toolbar: barTpl, width: 200}
+        ]];
+    } else {
+        return [[ 
+        {field: 'ID', title: 'ID', width: 80, sort: true},
+        {field: 'Name', title: '进程名'},
+        {field: 'PID', title: 'PID'},
+        {field: 'Status', title: '状态', templet: statusTpl},
+        {fixed: 'right', title:'操作', toolbar: barTpl, width: 400}
+        ]];
+    }
+    }
+
+    // 监听窗口大小改变
+    window.addEventListener('resize', function() {
+        table.reload('processTable', {
+        cols: getCols()
+        });
+    });
+
+    // WebSocket连接
+    function connectWebSocket() {
+        var socket = new WebSocket('ws://' + window.location.host + '/ws');
+        
+        socket.onopen = function(e) {
+            console.log("WebSocket connection established");
+        };
+
+        socket.onmessage = function(event) {
+            var process = JSON.parse(event.data);
+            updateProcessStatus(process);
+        };
+
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed. Reconnecting...");
+            setTimeout(connectWebSocket, 1000);
+        };
+
+        socket.onerror = function(error) {
+            console.log("WebSocket error: ", error);
+        };
+    }
+
+    connectWebSocket();
+
+    // 更新进程状态
+    function updateProcessStatus(process) {
+        var tableIns = table.render({
+            elem: '#processTable',
+            data: table.cache['processTable'] || [],
+            cols: getCols(),
+            page: { limit: 15, limits: [15, 30, 45, 60, 90] },
+            lineStyle: 'height: 60px;'
+        });
+        
+        var oldData = tableIns.config.data;
+        var updated = false;
+        for (var i = 0; i < oldData.length; i++) {
+            if (oldData[i].ID === process.ID) {
+                Object.assign(oldData[i], process);
+                updated = true;
+                break;
+            }
+        }
+        
+        if (updated) {
+            tableIns.reload({
+                data: oldData,
+                page: {
+                    curr: tableIns.config.page.curr
+                }
+            });
+        } else {
+            // 如果没有找到匹配的行，可能是新进程，重新加载整个表格
+            table.reload('processTable');
+        }
+    }
+
+
+
+
+    table.on('tool(processTable)', function(obj){
+        var data = obj.data;
+        if(obj.event === 'start'){
+            startProcess(data.ID);
+        } else if(obj.event === 'stop'){
+            stopProcess(data.ID);
+        } else if(obj.event === 'log'){
+            showLogs(data.ID);
+        } else if(obj.event === 'edit'){
+            showProcessForm(data);
+        } else if(obj.event === 'del'){
+            deleteProcess(data.ID);
+        }
+    });
+
+    //触发行双击事件
+    table.on('rowDouble(processTable)', function (obj) {
+        if (obj.data.ID !== "") {
+            showProcessForm(obj.data);
+        }
+    });
+
+    document.getElementById('addProcessBtn').addEventListener('click', function(){
+        showProcessForm();
+    });
+
+    function showProcessForm(data) {
+        var title = data ? '编辑进程' : '添加进程';
+        const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+        const maxWidth = Math.min(650, screenWidth - 40);
+        layer.open({
+            type: 1,
+            title: title,
+            area: [`${maxWidth}px`, '480px'],
+            content: `
+                <form class="layui-form" style="padding: 20px;">
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">进程名:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="Name" required lay-verify="required" placeholder="请输入进程名" class="layui-input" value="${data ? data.Name : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">命令行:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="Command" required lay-verify="required" placeholder="请输入命令行" class="layui-input" value="${data ? data.Command : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">工作目录:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="WorkDir" placeholder="请输入工作目录" class="layui-input" value="${data ? data.WorkDir : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">用户:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="User" placeholder="请输入用户" class="layui-input" value="${data ? data.User : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">重试次数:</label>
+                        <div class="layui-input-block">
+                            <input type="number" name="RetryCount" required lay-verify="required" placeholder="请输入重试次数" class="layui-input" value="${data ? data.RetryCount : '3'}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">自启:</label>
+                        <div class="layui-input-block">
+                            <input type="checkbox" name="AutoStart" lay-skin="switch" lay-text="ON|OFF" ${data && data.AutoStart ? 'checked' : ''}>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <div class="layui-input-block">
+                            <button class="layui-btn" lay-submit lay-filter="processForm">保存</button>
+                            <button type="button" class="layui-btn layui-btn-primary" id="closeBtn">关闭</button>
+                        </div>
+                    </div>
+                </form>
+            `
+        });
+        form.render();
+        
+        document.getElementById('closeBtn').addEventListener('click', function() {
+            layer.closeAll();
+        });
+
+        form.on('submit(processForm)', function(formData){
+            var processData = formData.field;
+            processData.AutoStart = processData.AutoStart === 'on';
+            processData.RetryCount = parseInt(processData.RetryCount);
+            
+            var url = data ? '/process/' + data.ID : '/process';
+            var method = data ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(processData),
+            })
+            .then(response => response.json())
+            .then(result => {
+                layer.closeAll();
+                table.reload('processTable');
+                layer.msg(data ? '进程更新成功' : '进程添加成功');
+            })
+            .catch(error => {
+                layer.msg(data ? '进程更新失败' : '进程添加失败');
+            });
+            
+            return false;
+        });
+    }
+
+    // function startProcess(id) {
+    //     fetch('/processes/' + id)
+    //         .then(response => response.json())
+    //         .then(process => {
+    //             if (process.Status === 'running') {
+    //                 layer.msg('进程已经在运行中', {icon: 2});
+    //             } else if (process.Status === 'starting') {
+    //                 layer.msg('进程正在启动中', {icon: 2});
+    //             } else {
+    //                 fetch('/process/' + id + '/start', {method: 'POST'})
+    //                     .then(response => response.json())
+    //                     .then(data => {
+    //                         table.reload('processTable');
+    //                         layer.msg('进程已启动', {icon: 1});
+    //                     })
+    //                     .catch(error => {
+    //                         layer.msg('启动失败: ' + error.message, {icon: 2});
+    //                     });
+    //             }
+    //         })
+    //         .catch(error => {
+    //             layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
+    //         });
+    // }
+
+    // function stopProcess(id) {
+    //     fetch('/processes/' + id)
+    //         .then(response => response.json())
+    //         .then(process => {
+    //             if (process.Status === 'stopped') {
+    //                 layer.msg('进程已经停止', {icon: 2});
+    //             } else if (process.Status === 'stopping') {
+    //                 layer.msg('进程正在停止中', {icon: 2});
+    //             } else {
+    //                 fetch('/process/' + id + '/stop', {method: 'POST'})
+    //                     .then(response => response.json())
+    //                     .then(data => {
+    //                         table.reload('processTable');
+    //                         layer.msg('进程已停止', {icon: 1});
+    //                     })
+    //                     .catch(error => {
+    //                         layer.msg('停止失败: ' + error.message, {icon: 2});
+    //                     });
+    //             }
+    //         })
+    //         .catch(error => {
+    //             layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
+    //         });
+    // }
+
+    // startProcess 函数
+    function startProcess(id) {
+        fetch('/processes/' + id)
+            .then(response => response.json())
+            .then(process => {
+                if (process.Status === 'running') {
+                    layer.msg('进程已经在运行中', {icon: 2});
+                } else if (process.Status === 'starting') {
+                    layer.msg('进程正在启动中', {icon: 2});
+                } else {
+                    fetch('/process/' + id + '/start', {method: 'POST'})
+                        .then(response => response.json())
+                        .then(data => {
+                            layer.msg('进程已开始启动', {icon: 1});
+                            // 不要在这里重新加载表格，等待WebSocket消息
+                        })
+                        .catch(error => {
+                            layer.msg('启动失败: ' + error.message, {icon: 2});
+                        });
+                }
+            })
+            .catch(error => {
+                layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
+            });
+    }
+
+    // stopProcess 函数
+    function stopProcess(id) {
+        fetch('/processes/' + id)
+            .then(response => response.json())
+            .then(process => {
+                if (process.Status === 'stopped') {
+                    layer.msg('进程已经停止', {icon: 2});
+                } else if (process.Status === 'stopping') {
+                    layer.msg('进程正在停止中', {icon: 2});
+                } else if (process.Status === 'error') {
+                    layer.msg('进程出错，无进程需要停止', {icon: 2});
+                } else {
+                    fetch('/process/' + id + '/stop', {method: 'POST'})
+                        .then(response => response.json())
+                        .then(data => {
+                            layer.msg('进程已开始停止', {icon: 1});
+                        })
+                        .catch(error => {
+                            layer.msg('停止失败: ' + error.message, {icon: 2});
+                        });
+                }
+            })
+            .catch(error => {
+                layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
+            });
+    }
+
+    function deleteProcess(id) {
+        fetch('/processes/' + id)
+            .then(response => response.json())
+            .then(process => {
+                if (process.Status === 'running') {
+                    layer.msg('无法删除正在运行的进程，请先停止进程', {icon: 2});
+                } else {
+                    layer.confirm('确定删除这个进程吗？', function(index){
+                        fetch('/process/' + id, {method: 'DELETE'})
+                            .then(response => {
+                                if (response.ok) {
+                                    table.reload('processTable');
+                                    layer.close(index);
+                                    layer.msg('删除成功', {icon: 1});
+                                } else {
+                                    throw new Error('删除失败');
+                                }
+                            })
+                            .catch(error => {
+                                layer.msg('删除失败: ' + error.message, {icon: 2});
+                            });
+                    });
+                }
+            })
+            .catch(error => {
+                layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
+            });
+    }
+
+    function showLogs(id) {
+        let source;
+        let MAX_LINES = 800;
+        
+        layer.open({
+            type: 1,
+            title: '进程日志',
+            area: ['90%', '80%'],
+            shadeClose: true,
+            moveType: 1,
+            maxmin: true,
+            content: `
+                <div id="logWrapper" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="log-controls">
+                        <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+                        <button id="clearLogs">清空日志</button>
+                        <div style="margin-left: 20px;">
+                            <label for="maxLines">最大行数:</label>
+                            <input type="number" id="maxLines" value="800" min="100" step="100">
+                        </div>
+                        <input type="text" id="filterLogs" placeholder="筛选日志...">
+                    </div>
+                    <div id="logContainer" class="terminal" style="flex-grow: 1; overflow-y: auto;"></div>
+                </div>
+            `,
+            success: function(layero, index) {
+                const logContainer = document.getElementById('logContainer');
+                const autoScrollCheckbox = document.getElementById('autoScroll');
+                const clearLogsButton = document.getElementById('clearLogs');
+                const filterLogsInput = document.getElementById('filterLogs');
+                const maxLinesInput = document.getElementById('maxLines');
+
+                logContainer.style.height = (layero.height() - layero.find('.layui-layer-title').outerHeight() - layero.find('.log-controls').outerHeight()) + 'px';
+
+                let logLines = [];
+
+                function updateLogDisplay() {
+                    logContainer.textContent = logLines.join('\n');
+                    if (autoScrollCheckbox.checked) {
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    }
+                }
+
+                function trimLogLines() {
+                    while (logLines.length > MAX_LINES) {
+                        logLines.shift();
+                    }
+                }
+
+                maxLinesInput.onchange = function() {
+                    MAX_LINES = parseInt(this.value, 10);
+                    trimLogLines();
+                    updateLogDisplay();
+                };
+
+                source = new EventSource('/process/' + id + '/logstream');
+                source.onmessage = function(event) {
+                    const logLine = event.data;
+                    if (!filterLogsInput.value || logLine.includes(filterLogsInput.value)) {
+                        logLines.push(logLine);
+                        trimLogLines();
+                        updateLogDisplay();
+                    }
+                };
+
+                clearLogsButton.onclick = function() {
+                    logLines = [];
+                    updateLogDisplay();
+                };
+
+                filterLogsInput.oninput = function() {
+                    const filter = this.value;
+                    const filteredLines = logLines.filter(line => line.includes(filter));
+                    logContainer.textContent = filteredLines.join('\n');
+                };
+            },
+            end: function() {
+                if (source) {
+                    source.close();
+                }
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>
+
+

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/kardianos/service"
+	goprocess "github.com/pizixi/goprocess/cmd"
+	"github.com/pizixi/goprocess/internal/services"
 )
 
 var logger service.Logger
@@ -19,12 +21,12 @@ func (p *program) Start(s service.Service) error {
 
 func (p *program) Stop(s service.Service) error {
 	log.Println("Stopping service...")
-	stopAllProcesses() // 直接调用停止所有进程的函数
+	services.StopAllProcesses() // 直接调用停止所有进程的函数
 	return nil
 }
 
 func (p *program) run() {
-	GoprocessMain()
+	goprocess.GoprocessMain()
 }
 
 func main() {

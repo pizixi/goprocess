@@ -1,6 +1,11 @@
 # Goland
 .idea
+logs
 
 # Other files
 goprocess.exe
 goprocess
+goprocess.json
+goprocess.log
+processes.json
+processes.db

@@ -11,11 +11,14 @@ goprocess.exe stop
 goprocess.exe uninstall
 
 ./goprocess install
+./goprocess start
+./goprocess stop
+./goprocess uninstall
 ```
 访问web界面: http://127.0.0.1:11315
 
 
-默认账号密码: admin/admin999（目前代码写死）
+可开启权限控制，默认不开，密码可在配置文件中配置 
 
 ## 截图
 
@@ -24,3 +27,5 @@ goprocess.exe uninstall
 ![screenshot](images/screenshot2.png)
 
 ![screenshot](images/screenshot3.png)
+
+![screenshot](images/screenshot4.png)

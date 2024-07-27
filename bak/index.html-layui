@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精美的 Layui 侧边栏菜单示例</title>
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.6.8/dist/css/layui.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"> -->
+    <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
+    <style>
+               :root {
+            --primary-color: #009688; /* Layui 经典绿色 */
+            --secondary-color: #5FB878; /* Layui 次要绿色 */
+            --background-color: #F2F2F2; /* 浅灰色背景 */
+            --menu-bg: #FFFFFF;
+            --menu-color: #333333;
+            --menu-active-bg: #E6F7F5; /* 淡绿色 */
+            --menu-active-color: #009688;
+            --menu-hover-bg: #F0F0F0;
+            --header-bg: #E6F3FF; /* 新增：定义头部背景色 */
+        }
+
+        body {
+            background-color: var(--background-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* 新增：设置 layui-header 的背景色 */
+        .layui-layout-admin .layui-header {
+            background-color: var(--header-bg); /* 淡蓝色背景 */
+            box-shadow: 0 1px 4px rgba(0,21,41,.08);
+        }
+        .layui-layout-admin .layui-logo {
+            color: var(--primary-color);
+            font-size: 22px;
+            font-weight: bold;
+            background-color: var(--header-bg);
+            box-shadow: 1px 0 4px rgba(0,21,41,.08);
+        }
+        .layui-layout-admin .layui-side {
+            background-color: var(--menu-bg);
+            box-shadow: 2px 0 8px 0 rgba(29,35,41,.05);
+            transition: all 0.3s ease;
+        }
+        .layui-nav {
+            background-color: transparent;
+        }
+        .layui-nav-tree {
+            background-color: var(--menu-bg);
+        }
+        .layui-nav .layui-nav-item {
+            margin-top: 4px;
+            margin-bottom: 4px;
+        }
+        .layui-nav .layui-nav-item a {
+            color: var(--menu-color);
+            transition: all 0.3s ease;
+            border-radius: 4px;
+            margin: 4px 8px;
+        }
+        .layui-nav-tree .layui-nav-item > a:hover,
+        .layui-nav-tree .layui-nav-child dd.layui-this,
+        .layui-nav-tree .layui-nav-child dd.layui-this a,
+        .layui-nav-tree .layui-this,
+        .layui-nav-tree .layui-this > a {
+            background-color: #d4e9e7;
+            border-radius: 4px;
+        }
+
+        .layui-nav-tree .layui-nav-bar {
+            background-color: var(--primary-color);
+        }
+        .layui-nav-tree .layui-nav-item a:hover {
+            background-color: var(--menu-hover-bg);
+        }
+        .layui-nav-itemed > .layui-nav-child {
+            background-color: var(--menu-bg) !important;
+        }
+        .layui-nav-tree .layui-nav-item a {
+            height: 50px;
+            line-height: 50px;
+        }
+        .layui-nav-tree .layui-nav-item i {
+            margin-right: 10px;
+        }
+        .layui-body {
+            background-color: var(--background-color);
+            padding: 15px;
+        }
+        .layui-footer {
+            text-align: center;
+            background-color: #fff;
+            color: #666;
+            box-shadow: 0 -1px 4px rgba(0,21,41,.08);
+        }
+        .header-demo {
+            color: #333;
+        }
+        .layui-nav .layui-this:after, 
+        .layui-nav-bar, 
+        .layui-nav-tree .layui-nav-itemed:after {
+            background-color: var(--primary-color);
+        }
+        @media screen and (max-width: 768px) {
+            .layui-layout-admin .layui-side {
+                display: none;
+            }
+            .layui-layout-admin .layui-body {
+                left: 0;
+            }
+        }
+        /* 动画效果 */
+        .layui-nav-item a {
+            position: relative;
+            overflow: hidden;
+        }
+        .layui-nav-item a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary-color);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .layui-nav-item a:hover::after,
+        .layui-this > a::after {
+            transform: translateX(0);
+        }  
+              
+        .layadmin-flexible a {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 5px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+
+        .layadmin-flexible a:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 添加顶部导航栏的阴影效果 */
+        .layui-header {
+            box-shadow: 0 1px 10px rgba(0,0,0,0.1);
+        }
+
+        /* 美化侧边栏菜单项 */
+        .layui-nav-tree .layui-nav-item {
+            margin: 5px 10px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .layui-nav-tree .layui-nav-item a {
+            padding: 0 20px;
+            border-radius: 4px;
+        }
+
+        /* 添加菜单项的悬停动画 */
+        .layui-nav-tree .layui-nav-item a:hover {
+            transform: translateX(5px);
+            transition: transform 0.3s;
+        }
+
+        /* 美化内容区 */
+        .layui-body {
+            padding: 20px;
+            background-color: #FFFFFF;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        /* 添加页面切换动画 */
+        #content {
+            transition: opacity 0.3s;
+        }
+
+        /* 美化底部区域 */
+        .layui-footer {
+            font-size: 12px;
+            color: #999;
+        }
+        .layui-body, .layui-footer {
+            transition: left 0.3s;
+        }
+
+        @media screen and (max-width: 768px) {
+            .layui-layout-admin .layui-body,
+            .layui-layout-admin .layui-footer {
+                left: 0;
+            }
+        }
+        
+    </style>
+</head>
+<body class="layui-layout-body">
+    <div class="layui-layout layui-layout-admin">
+        <div class="layui-header">
+            <div class="layui-logo">示例</div>
+            <ul class="layui-nav layui-layout-left">
+                <li class="layui-nav-item layadmin-flexible" lay-unselect>
+                    <a href="javascript:;" layadmin-event="flexible" title="侧边伸缩">
+                        <i class="layui-icon layui-icon-shrink-right" id="LAY_app_flexible"></i>
+                    </a>
+                </li>
+                <!-- <li class="layui-nav-item"><a href="">控制台</a></li>
+                <li class="layui-nav-item"><a href="">商品管理</a></li>
+                <li class="layui-nav-item"><a href="">用户</a></li> -->
+            </ul>
+            <ul class="layui-nav layui-layout-right">
+                <li class="layui-nav-item">
+                    <a href="javascript:;">
+                        <!-- <img src="https://unsplash.it/40/40?random" class="layui-nav-img"> -->
+                        管理员
+                    </a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="">基本资料</a></dd>
+                        <dd><a href="">安全设置</a></dd>
+                        <dd><a href="">退出</a></dd>
+                    </dl>
+                </li>
+                <!-- <li class="layui-nav-item"><a href="javascript:;"><i class="layui-icon layui-icon-more-vertical"></i></a></li> -->
+            </ul>
+        </div>
+        
+        <div class="layui-side">
+            <div class="layui-side-scroll">
+                <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-tachometer-alt"></i> 仪表盘</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-layer-group"></i> 菜单组</a>
+                        <dl class="layui-nav-child">
+                            <dd><a href="javascript:;" data-url="page1.html"><i class="fas fa-file"></i> 页面1</a></dd>
+                            <dd><a href="javascript:;" data-url="page2.html"><i class="fas fa-file"></i> 页面2</a></dd>
+                            <dd><a href="javascript:;" data-url="page3.html"><i class="fas fa-file"></i> 页面3</a></dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;" data-url="processes.html"><i class="fas fa-chart-bar"></i> 进程管理</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-chart-pie"></i> 统计分析</a>
+                    </li>
+                    <li class="layui-nav-item">
+                        <a href="javascript:;"><i class="fas fa-cog"></i> 系统设置</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="layui-body">
+            <iframe src="processes.html" frameborder="0" id="content" style="width: 100%; height: 100%;"></iframe>
+        </div>
+        
+        <div class="layui-footer">
+            © 2023 精美的 Layui 示例 - 底部固定区域
+        </div>
+    </div>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/layui@2.6.8/dist/layui.min.js"></script> -->
+    <script src="/static/layui-v2.9.14/layui/layui.js"></script>
+
+    <script>
+    layui.use(['element', 'jquery'], function(){
+        var element = layui.element;
+        var $ = layui.jquery;
+        
+        // 监听菜单点击事件
+        $('.layui-nav-item a').on('click', function(){
+            var url = $(this).data('url');
+            if(url){
+                $('#content').css('opacity', '0');
+                setTimeout(function() {
+                    $('#content').attr('src', url);
+                    $('#content').on('load', function() {
+                        $(this).css('opacity', '1');
+                    });
+                }, 300);
+
+                // 移除其他菜单项的选中状态
+                $('.layui-nav-item').removeClass('layui-this');
+                $('.layui-nav-item dd').removeClass('layui-this');
+                // 为当前点击的菜单项添加选中状态
+                $(this).parents('.layui-nav-item').addClass('layui-this');
+                $(this).parent('dd').addClass('layui-this');
+            }
+        });
+
+        // 侧边栏伸缩
+        $('.layadmin-flexible').on('click', function(){
+            var isShow = $('.layui-side').is(':visible');
+            if(isShow){
+                $('.layui-side').hide();
+                $('.layui-body, .layui-footer').css('left', '0');
+                $(this).find('i').removeClass('layui-icon-shrink-right').addClass('layui-icon-spread-left');
+            } else {
+                $('.layui-side').show();
+                $('.layui-body, .layui-footer').css('left', '200px');
+                $(this).find('i').removeClass('layui-icon-spread-left').addClass('layui-icon-shrink-right');
+            }
+        });
+
+
+        // 设置默认选中processes.html
+        $('a[data-url="processes.html"]').parents('.layui-nav-item').addClass('layui-this');
+    });
+    </script>
+</body>
+</html>
+

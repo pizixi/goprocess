@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Tasks Manager</title>
+    <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
+    <style>
+        .terminal {
+            background-color: #1d1f21;
+            color: #c5c8c6;
+            font-family: 'Source Code Pro', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .terminal::-webkit-scrollbar {
+            width: 10px;
+        }
+        .terminal::-webkit-scrollbar-track {
+            background: #282a2e;
+        }
+        .terminal::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 5px;
+        }
+        .terminal::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        .log-controls {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-controls label, .log-controls div {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        .log-controls input[type="checkbox"], .log-controls input[type="number"] {
+            margin-right: 5px;
+        }
+        .log-controls button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .log-controls button:hover {
+            background-color: #45a049;
+        }
+        .log-controls input[type="text"], .log-controls input[type="number"] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 5px;
+        }
+        .task-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-enabled { background-color: #67C23A; color: white; }
+        .status-disabled { background-color: #909399; color: white; }
+        #addTaskBtn {
+            height: 38px;
+            line-height: 38px;
+            background-color: #009688;
+            border-color: #009688;
+        }
+        #addTaskBtn:hover {
+            background-color: #00877a;
+            border-color: #00877a;
+        }
+        .btn-custom {
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-custom:hover {
+            background-color: #34495e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .btn-custom:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: flex-start;
+        }
+        .action-btn {
+            flex: 0 1 auto;
+            margin: 2px !important;
+        }
+        /* @media (max-width: 768px) {
+            .action-buttons {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 5px;
+            }
+            .action-btn {
+                width: 100%;
+                text-align: center;
+            } 
+            .layui-btn-xs {
+                padding: 0 5px;
+                font-size: 12px;
+                line-height: 22px;
+                height: auto;
+            }
+        } */
+
+        @media screen and (max-width: 768px) {
+            .layui-table-cell.hidden-xs {
+                display: none;
+            }
+        }
+        .action-buttons .action-btn {
+            padding: 0 10px;
+        }
+        
+        .action-buttons .action-btn i {
+            margin-right: 5px;
+        }
+        .button-container {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            padding: 0 0;
+            z-index: 1000;
+        }
+        .table-container {
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-container">
+    <div class="button-container">
+        <div class="layui-row">
+            <div class="layui-col-md12" style="text-align: right;">
+                <button class="layui-btn layui-btn-sm btn-custom" id="addTaskBtn">
+                    <i class="layui-icon">&#xe654;</i>添加任务
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="layui-table" id="taskTable" lay-filter="taskTable"></table>
+    </div>
+</div>
+
+<script src="/static/layui-v2.9.14/layui/layui.js"></script>
+<script>
+layui.use(['table', 'form', 'layer'], function(){
+    var table = layui.table,
+        form = layui.form,
+        layer = layui.layer;
+
+    var statusTpl = function(d){
+        return '<span class="task-status ' + (d.isEnabled ? 'status-enabled' : 'status-disabled') + '">' + 
+               (d.isEnabled ? '启用' : '禁用') + '</span>';
+    };
+
+    var barTpl = '<div class="action-buttons">' +
+    '<button class="layui-btn layui-btn-xs layui-btn-normal action-btn" lay-event="run"><i class="layui-icon">&#xe652;</i>运行</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-primary action-btn" lay-event="log"><i class="layui-icon">&#xe60a;</i>日志</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-warm action-btn" lay-event="edit"><i class="layui-icon">&#xe642;</i>编辑</button>' +
+    '<button class="layui-btn layui-btn-xs layui-btn-danger action-btn" lay-event="del"><i class="layui-icon">&#xe640;</i>删除</button>' +
+    '</div>';
+
+    // table.render({
+    // elem: '#taskTable',
+    // url: '/api/tasks',
+    // cols: [[
+    //     {field: 'name', title: '任务名'},
+    //     {field: 'isEnabled', title: '状态', templet: statusTpl, unresize: true},
+    //     {field: 'cron', title: '定时表达式', class: 'hidden-xs'},
+    //     {field: 'workDir', title: '工作目录', class: 'hidden-xs'},
+    //     {field: 'command', title: '任务命令', class: 'hidden-xs'},
+    //     {fixed: 'right', title: '操作', toolbar: barTpl, width: 190}
+    // ]],
+    // page: {
+    //     limit: 20
+    // }
+    // });
+
+    // 初始化表格
+    table.render({
+        elem: '#taskTable',
+        url: '/api/tasks',
+        cols: getCols(),
+        page: { limit: 15, limits: [15, 30, 45, 60, 90] },
+        lineStyle: 'height: 60px;'
+    });
+
+    // 根据屏幕宽度返回列配置
+    function getCols() {
+    if (window.innerWidth < 768) {
+        return [[ 
+        {field: 'name', title: '任务名'}, 
+        {field: 'isEnabled', title: '状态', templet: statusTpl, unresize: true}, 
+        {fixed: 'right', title:'操作', toolbar: barTpl, width: 145} // 减小宽度
+        ]];
+    } else {
+        return [[ 
+        {field: 'ID', title: 'ID', width: 80, sort: true},
+        {field: 'name', title: '任务名'}, 
+        {field: 'isEnabled', title: '状态', templet: statusTpl, unresize: true}, 
+        {field: 'cron', title: '定时表达式'}, 
+        {field: 'workDir', title: '工作目录'}, 
+        {field: 'command', title: '任务命令'}, 
+        {fixed: 'right', title:'操作', toolbar: barTpl, width: 260}
+        ]];
+    }
+    }
+
+    // 监听窗口大小改变
+    window.addEventListener('resize', function() {
+        table.reload('taskTable', {
+        cols: getCols()
+        });
+    });
+
+    // 模板函数（示例）
+    function statusTpl(d) {
+        return d.isEnabled ? '启用' : '禁用';
+    }
+
+    function barTpl(d) {
+        return '<a class="layui-btn layui-btn-xs">编辑</a>';
+    }
+
+    table.on('tool(taskTable)', function(obj){
+        var data = obj.data;
+        if(obj.event === 'del'){
+            if(data.isEnabled){
+                layer.msg('任务启用状态的任务不允许删除');
+            } else {
+                layer.confirm('确定删除这个任务吗？', function(index){
+                    fetch('/api/tasks/' + data.ID, {method: 'DELETE'})
+                        .then(response => {
+                            // obj.del();// 这个不重载整个页面，总条数不变
+                            table.reload('taskTable');
+                            layer.close(index);
+                        })
+                        .catch(error => {
+                            layer.msg('删除失败');
+                        });
+                });
+            }
+        } else if(obj.event === 'edit'){
+            showTaskForm(data);
+        } else if(obj.event === 'run'){
+            fetch('/api/tasks/' + data.ID + '/run', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    layer.msg('任务已开始运行');
+                })
+                .catch(error => {
+                    layer.msg('运行失败');
+                });
+        } else if(obj.event === 'log'){
+            showLogs(data.ID);
+        }
+    });
+
+    //触发行双击事件
+    table.on('rowDouble(taskTable)', function (obj) {
+        if (obj.data.ID !== "") {
+            showTaskForm(obj.data);
+        }
+    });
+    document.getElementById('addTaskBtn').addEventListener('click', function(){
+        showTaskForm();
+    });
+
+    function showTaskForm(data) {
+        const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+        const maxWidth = Math.min(650, screenWidth - 40);
+        layer.open({
+            type: 1,
+            title: data ? '编辑任务' : '添加任务',
+            area: [`${maxWidth}px`, '480px'],
+            content: `
+                <form class="layui-form" style="padding: 20px;">
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">任务名:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="name" required lay-verify="required" placeholder="请输入任务名" class="layui-input" value="${data ? data.name : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">定时表达式:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="cron" required lay-verify="required" placeholder="请输入Cron表达式" class="layui-input" value="${data ? data.cron : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">工作目录:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="workDir" required lay-verify="required" placeholder="请输入工作目录" class="layui-input" value="${data ? data.workDir : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">任务命令:</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="command" required lay-verify="required" placeholder="请输入任务命令" class="layui-input" value="${data ? data.command : ''}">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">是否启用:</label>
+                        <div class="layui-input-block">
+                            <input type="checkbox" name="isEnabled" lay-skin="switch" lay-text="ON|OFF" ${data && data.isEnabled ? 'checked' : ''}>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <div class="layui-input-block">
+                            <button class="layui-btn" lay-submit lay-filter="taskForm">保存</button>
+                            <button type="button" class="layui-btn layui-btn-primary" id="closeBtn">关闭</button>
+                        </div>
+                    </div>
+                </form>
+            `
+        });
+        form.render();
+        
+        document.getElementById('closeBtn').addEventListener('click', function() {
+            layer.closeAll();
+        });
+
+        form.on('submit(taskForm)', function(formData){
+            var taskData = formData.field;
+            taskData.isEnabled = taskData.isEnabled === 'on';
+            
+            var url = data ? '/api/tasks/' + data.ID : '/api/tasks';
+            var method = data ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData),
+            })
+            .then(response => response.json())
+            .then(result => {
+                layer.closeAll();
+                table.reload('taskTable');
+                layer.msg(data ? '任务更新成功' : '任务添加成功');
+            })
+            .catch(error => {
+                layer.msg(data ? '任务更新失败' : '任务添加失败');
+            });
+            
+            return false;
+        });
+    }
+
+    function showLogs(id) {
+        let source;
+        let MAX_LINES = 800;
+        
+        layer.open({
+            type: 1,
+            title: '任务日志',
+            area: ['90%', '80%'],
+            shadeClose: true,
+            moveType: 1,
+            maxmin: true,
+            content: `
+                <div id="logWrapper" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="log-controls">
+                        <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+                        <button id="clearLogs">清空日志</button>
+                        <div style="margin-left: 20px;">
+                            <label for="maxLines">最大行数:</label>
+                            <input type="number" id="maxLines" value="800" min="100" step="100">
+                        </div>
+                        <input type="text" id="filterLogs" placeholder="筛选日志...">
+                    </div>
+                    <div id="logContainer" class="terminal" style="flex-grow: 1; overflow-y: auto;"></div>
+                </div>
+            `,
+            success: function(layero, index) {
+                const logContainer = document.getElementById('logContainer');
+                const autoScrollCheckbox = document.getElementById('autoScroll');
+                const clearLogsButton = document.getElementById('clearLogs');
+                const filterLogsInput = document.getElementById('filterLogs');
+                const maxLinesInput = document.getElementById('maxLines');
+
+                logContainer.style.height = (layero.height() - layero.find('.layui-layer-title').outerHeight() - layero.find('.log-controls').outerHeight()) + 'px';
+
+                let logLines = [];
+
+                function updateLogDisplay() {
+                    logContainer.textContent = logLines.join('\n');
+                    if (autoScrollCheckbox.checked) {
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    }
+                }
+
+                function trimLogLines() {
+                    while (logLines.length > MAX_LINES) {
+                        logLines.shift();
+                    }
+                }
+
+                maxLinesInput.onchange = function() {
+                    MAX_LINES = parseInt(this.value, 10);
+                    trimLogLines();
+                    updateLogDisplay();
+                };
+
+                // fetch(`/api/tasks/${id}/logs`)
+                //     .then(response => response.text())
+                //     .then(logText => {
+                //         logLines = logText.split('\n');
+                //         trimLogLines();
+                //         updateLogDisplay();
+                //     })
+                //     .catch(error => {
+                //         console.error('Error fetching logs:', error);
+                //         logLines.push('Error fetching logs. Please try again later.');
+                //         updateLogDisplay();
+                //     });
+                source = new EventSource('/api/tasks/' + id + '/logs');
+                source.onmessage = function(event) {
+                    const logLine = event.data;
+                    if (!filterLogsInput.value || logLine.includes(filterLogsInput.value)) {
+                        logLines.push(logLine);
+                        trimLogLines();
+                        updateLogDisplay();
+                    }
+                };
+                clearLogsButton.onclick = function() {
+                    logLines = [];
+                    updateLogDisplay();
+                };
+
+                filterLogsInput.oninput = function() {
+                    const filter = this.value;
+                    const filteredLines = logLines.filter(line => line.includes(filter));
+                    logContainer.textContent = filteredLines.join('\n');
+                };
+            },
+            end: function() {
+                if (source) {
+                    source.close();
+                }
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

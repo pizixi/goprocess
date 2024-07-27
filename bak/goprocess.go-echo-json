@@ -214,8 +214,14 @@ func GoprocessMain() {
 	// 初始化Echo框架
 	e := echo.New()
 
-	// 设置中间件
-	e.Use(middleware.Logger())
+	// 自定义日志格式
+	loggerConfig := middleware.LoggerConfig{
+		Format: "${time_rfc3339_nano}  ${method}  ${uri}  ${status}\n",
+		Output: file,
+	}
+
+	// 使用自定义配置的日志中间件
+	e.Use(middleware.LoggerWithConfig(loggerConfig))
 	e.Use(middleware.Recover())
 
 	// 渲染嵌入的HTML文件
@@ -237,6 +243,7 @@ func GoprocessMain() {
 	if config.HTTPAuth.Enabled {
 		// 受保护的路由
 		e.GET("/", homeHandler, authMiddleware)
+		e.GET("/processes.html", processesHandler, authMiddleware)
 		e.GET("/processes", listProcessesHandler, authMiddleware)
 		e.GET("/processes/:id", getProcessHandler, authMiddleware)
 		e.POST("/process", createProcessHandler, authMiddleware)
@@ -249,6 +256,7 @@ func GoprocessMain() {
 	} else {
 		// 不受保护的路由
 		e.GET("/", homeHandler)
+		e.GET("/processes.html", processesHandler)
 		e.GET("/processes", listProcessesHandler)
 		e.GET("/processes/:id", getProcessHandler)
 		e.POST("/process", createProcessHandler)
@@ -318,6 +326,9 @@ func logoutHandler(c echo.Context) error {
 
 func homeHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "index.html", nil)
+}
+func processesHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "processes.html", nil)
 }
 
 func listProcessesHandler(c echo.Context) error {

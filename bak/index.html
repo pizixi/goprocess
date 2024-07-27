@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>goprocess管理平台</title>
+    <title>优化后的响应式布局示例</title>
     <!-- <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"> -->
     <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"> -->
     <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
@@ -96,15 +96,15 @@
         }
         #content {
             flex-grow: 1;
-            /* padding: 30px; */
+            padding: 30px;
             transition: all 0.3s ease;
             margin-left: 280px;
         }
         iframe {
             width: 100%;
-            height: calc(100vh - 5px);
+            height: calc(100vh - 60px);
             border: none;
-            /* border-radius: 10px; */
+            border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         #menu-toggle {
@@ -147,16 +147,13 @@
 <body>
     <div id="menu">
         <!-- 菜单导航栏居中 -->
-        <h2 style="text-align: center;">
-            GPM<sup style="font-size: 0.5em; position: relative; top: -0.2em;">®</sup>
-          </h2>
+        <h2 style="text-align: center;">菜单导航</h2>
         <ul>
             <li><a href="processes.html" target="content-frame" class="current"><i class="fas fa-home"></i> 进程管理</a></li>
-            <li><a href="tasks.html" target="content-frame"><i class="fas fa-tasks"></i> 定时任务</a></li>
-            <!-- <li><a href="page2.html" target="content-frame"><i class="fas fa-info-circle"></i> 关于我们</a></li>
+            <li><a href="page2.html" target="content-frame"><i class="fas fa-info-circle"></i> 关于我们</a></li>
             <li><a href="page3.html" target="content-frame"><i class="fas fa-envelope"></i> 联系我们</a></li>
             <li><a href="page4.html" target="content-frame"><i class="fas fa-cog"></i> 设置</a></li>
-            <li><a href="page5.html" target="content-frame"><i class="fas fa-question-circle"></i> 帮助</a></li> -->
+            <li><a href="page5.html" target="content-frame"><i class="fas fa-question-circle"></i> 帮助</a></li>
         </ul>
     </div>
     <button id="menu-toggle"><i class="fas fa-bars"></i></button>
