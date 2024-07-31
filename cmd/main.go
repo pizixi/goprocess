@@ -1,23 +1,27 @@
 package goprocess
 
 import (
+	"context"
 	"html/template"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
-	"os"
+	"path/filepath"
 
-	"github.com/codeskyblue/kexec"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/natefinch/lumberjack"
 	"github.com/pizixi/goprocess/internal/config"
 	"github.com/pizixi/goprocess/internal/handlers"
 	"github.com/pizixi/goprocess/internal/models"
 	"github.com/pizixi/goprocess/internal/services"
 	"github.com/pizixi/goprocess/internal/websocket"
 	"github.com/pizixi/goprocess/web"
+	"github.com/robfig/cron/v3"
 )
+
+var PS *services.ProcessService
 
 func GoprocessMain() {
 	// 读取配置文件
@@ -25,30 +29,46 @@ func GoprocessMain() {
 		panic("failed to read config from JSON: " + err.Error())
 	}
 
-	// 初始化进程数据
-	if err := models.InitDB(); err != nil {
-		panic("failed to InitDB: " + err.Error())
-	}
-	// // 初始化进程数据
-	// if err := models.ReadProcessesFromJSON(); err != nil {
-	// 	panic("failed to read processes from JSON: " + err.Error())
-	// }
-
-	// // 初始化定时任务数据
-	// if err := models.ReadTasksFromJSON(); err != nil {
-	// 	panic("failed to read tasks from JSON: " + err.Error())
-	// }
-
-	services.Processes = make(map[uint]*kexec.KCommand)
-
-	// 打开日志文件
-	file, err := os.OpenFile("goprocess.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	db, err := models.NewGormDatabase("processes.db")
 	if err != nil {
-		log.Fatalf("Failed to open goprocess.log: %v", err)
+		log.Fatalf("初始化数据库失败: %v", err)
 	}
-	defer file.Close()
+	logFile := &lumberjack.Logger{
+		Filename:   filepath.Join("logs", "goprocess.log"),
+		MaxSize:    10,
+		MaxBackups: 3,
+		MaxAge:     28,
+		Compress:   true,
+	}
+
 	// 重定向标准输出到日志文件
-	log.SetOutput(file)
+	log.SetOutput(logFile)
+
+	pm := models.NewProcessManager(db)
+	PS = services.NewProcessService(pm)
+
+	processHandler := handlers.NewHandler(pm, PS)
+	if err := pm.LoadProcesses(context.Background()); err != nil {
+		log.Fatalf("加载进程失败: %v", err)
+	}
+
+	cronJob := cron.New()
+	taskManager := models.NewTaskManager(db, cronJob)
+	taskService := services.NewTaskService(cronJob)
+
+	// 加载所有任务
+	if err := taskManager.LoadTasks(context.Background()); err != nil {
+		log.Fatalf("加载任务失败: %v", err)
+	}
+	// 初始化并启动已启用的任务
+	enabledTasks := taskManager.GetEnabledTasks()
+	log.Printf("找到 %d 个已启用的任务", len(enabledTasks))
+	for _, task := range enabledTasks {
+		taskCopy := task // 创建一个副本以避免闭包问题
+		taskService.ScheduleTask(&taskCopy)
+	}
+
+	taskHandler := handlers.NewTaskHandler(taskManager, taskService)
 
 	// 初始化Echo框架
 	e := echo.New()
@@ -56,7 +76,8 @@ func GoprocessMain() {
 	// 自定义日志格式
 	loggerConfig := middleware.LoggerConfig{
 		Format: "${time_rfc3339_nano}  ${method}  ${uri}  ${status}\n",
-		Output: file,
+		// Output: file,
+		Output: logFile,
 	}
 
 	// 使用自定义配置的日志中间件
@@ -68,6 +89,7 @@ func GoprocessMain() {
 		templates: template.Must(template.New("").ParseFS(web.ViewsFS, "views/*")),
 	}
 	e.Renderer = renderer
+	e.Debug = true
 
 	// 设置静态文件服务
 	staticRootFS, _ := fs.Sub(web.StaticFS, "static")
@@ -75,19 +97,86 @@ func GoprocessMain() {
 	e.StaticFS("/static", httpFSAdapter{httpFS})
 
 	// 设置路由
-	setupRoutes(e)
+	// setupRoutes(e)
+	e.GET("/login", handlers.LoginHandler)
+	e.POST("/login", handlers.LoginPostHandler)
+	e.GET("/logout", handlers.LogoutHandler)
+
+	if config.Conf.HTTPAuth.Enabled {
+		// 受保护的路由
+		e.GET("/", handlers.HomeHandler, handlers.AuthMiddleware)
+		// 进程管理
+		e.GET("/processes.html", handlers.ProcessesHandler, handlers.AuthMiddleware)
+		e.GET("/processes", processHandler.ListProcessesHandler, handlers.AuthMiddleware)
+		e.GET("/processes/:id", processHandler.GetProcessHandler, handlers.AuthMiddleware)
+		e.POST("/process", processHandler.CreateProcessHandler, handlers.AuthMiddleware)
+		e.PUT("/process/:id", processHandler.UpdateProcessHandler, handlers.AuthMiddleware)
+		e.DELETE("/process/:id", processHandler.DeleteProcessHandler, handlers.AuthMiddleware)
+		e.POST("/process/:id/start", processHandler.StartProcessHandler, handlers.AuthMiddleware)
+		e.POST("/process/:id/stop", processHandler.StopProcessHandler, handlers.AuthMiddleware)
+		e.GET("/process/:id/logstream", processHandler.GetProcesseLogsHandler, handlers.AuthMiddleware)
+		e.GET("/ws", websocket.HandleWebSocket, handlers.AuthMiddleware)
+
+		// 定时任务
+		e.GET("/tasks.html", handlers.TasksHandler, handlers.AuthMiddleware)
+		e.GET("/api/tasks", taskHandler.ListTasksHandler, handlers.AuthMiddleware)
+		e.POST("/api/tasks", taskHandler.CreateTaskHandler, handlers.AuthMiddleware)
+		e.PUT("/api/tasks/:id", taskHandler.UpdateTaskHandler, handlers.AuthMiddleware)
+		e.DELETE("/api/tasks/:id", taskHandler.DeleteTaskHandler, handlers.AuthMiddleware)
+		e.POST("/api/tasks/:id/toggle", taskHandler.ToggleTaskStatusHandler, handlers.AuthMiddleware)
+		e.POST("/api/tasks/:id/run", taskHandler.RunTaskHandler, handlers.AuthMiddleware)
+		e.GET("/api/tasks/:id/logs", taskHandler.GetTaskLogsHandler, handlers.AuthMiddleware)
+
+		// 系统日志
+		e.GET("/serverlogs.html", handlers.ServerLogsHandler, handlers.AuthMiddleware)
+		e.GET("/api/serverlogs", handlers.GetServerLogsHandler, handlers.AuthMiddleware)
+	} else {
+		// 不受保护的路由
+		e.GET("/", handlers.HomeHandler)
+		// 进程管理
+		e.GET("/processes.html", handlers.ProcessesHandler)
+		e.GET("/processes", processHandler.ListProcessesHandler)
+		e.GET("/processes/:id", processHandler.GetProcessHandler)
+		e.POST("/process", processHandler.CreateProcessHandler)
+		e.PUT("/process/:id", processHandler.UpdateProcessHandler)
+		e.DELETE("/process/:id", processHandler.DeleteProcessHandler)
+		e.POST("/process/:id/start", processHandler.StartProcessHandler)
+		e.POST("/process/:id/stop", processHandler.StopProcessHandler)
+		e.GET("/process/:id/logstream", processHandler.GetProcesseLogsHandler)
+		e.GET("/ws", websocket.HandleWebSocket)
+
+		// 定时任务
+		e.GET("/tasks.html", handlers.TasksHandler)
+		e.GET("/api/tasks", taskHandler.ListTasksHandler)
+		e.POST("/api/tasks", taskHandler.CreateTaskHandler)
+		e.PUT("/api/tasks/:id", taskHandler.UpdateTaskHandler)
+		e.DELETE("/api/tasks/:id", taskHandler.DeleteTaskHandler)
+		e.POST("/api/tasks/:id/toggle", taskHandler.ToggleTaskStatusHandler)
+		e.POST("/api/tasks/:id/run", taskHandler.RunTaskHandler)
+		e.GET("/api/tasks/:id/logs", taskHandler.GetTaskLogsHandler)
+
+		// 系统日志
+		e.GET("/serverlogs.html", handlers.ServerLogsHandler)
+		e.GET("/api/serverlogs", handlers.GetServerLogsHandler)
+	}
 
 	// 自动启动进程
-	go services.InitializeAndAutoStartProcesses()
+	go PS.InitializeAndAutoStartProcesses()
 
 	// 启动定时任务
-	go services.InitializeCronJob()
+	cronJob.Start()
+	// 定期打印已启用的任务（每30秒打印一次）
+	// go func() {
+	// 	ticker := time.NewTicker(30 * time.Second)
+	// 	for range ticker.C {
+	// 		taskService.PrintEnabledTasks()
+	// 	}
+	// }()
 
-	// 设置关闭处理
-	services.SetupCloseHandler()
+	defer cronJob.Stop()
 
-	// 程序退出时停止 CronJob
-	services.CronJobCleanup()
+	// 设置关闭进程处理
+	PS.SetupCloseHandler()
 
 	// 启动服务器
 	e.Logger.Fatal(e.Start(config.Conf.Addr))
@@ -110,56 +199,4 @@ type httpFSAdapter struct {
 
 func (h httpFSAdapter) Open(name string) (fs.File, error) {
 	return h.httpFS.Open(name)
-}
-
-func setupRoutes(e *echo.Echo) {
-	e.GET("/login", handlers.LoginHandler)
-	e.POST("/login", handlers.LoginPostHandler)
-	e.GET("/logout", handlers.LogoutHandler)
-
-	if config.Conf.HTTPAuth.Enabled {
-		// 受保护的路由
-		e.GET("/", handlers.HomeHandler, handlers.AuthMiddleware)
-		e.GET("/processes.html", handlers.ProcessesHandler, handlers.AuthMiddleware)
-		e.GET("/processes", handlers.ListProcessesHandler, handlers.AuthMiddleware)
-		e.GET("/processes/:id", handlers.GetProcessHandler, handlers.AuthMiddleware)
-		e.POST("/process", handlers.CreateProcessHandler, handlers.AuthMiddleware)
-		e.PUT("/process/:id", handlers.UpdateProcessHandler, handlers.AuthMiddleware)
-		e.DELETE("/process/:id", handlers.DeleteProcessHandler, handlers.AuthMiddleware)
-		e.POST("/process/:id/start", handlers.StartProcessHandler, handlers.AuthMiddleware)
-		e.POST("/process/:id/stop", handlers.StopProcessHandler, handlers.AuthMiddleware)
-		e.GET("/process/:id/logstream", handlers.LogStreamHandler, handlers.AuthMiddleware)
-		e.GET("/ws", websocket.HandleWebSocket, handlers.AuthMiddleware)
-
-		e.GET("/tasks.html", handlers.TasksHandler, handlers.AuthMiddleware)
-		e.GET("/api/tasks", handlers.GetTasksHandler, handlers.AuthMiddleware)
-		e.POST("/api/tasks", handlers.CreateTaskHandler, handlers.AuthMiddleware)
-		e.PUT("/api/tasks/:id", handlers.UpdateTaskHandler, handlers.AuthMiddleware)
-		e.DELETE("/api/tasks/:id", handlers.DeleteTaskHandler, handlers.AuthMiddleware)
-		e.POST("/api/tasks/:id/toggle", handlers.ToggleTaskHandler, handlers.AuthMiddleware)
-		e.POST("/api/tasks/:id/run", handlers.RunTaskHandler, handlers.AuthMiddleware)
-		e.GET("/api/tasks/:id/logs", handlers.GetTaskLogsHandler, handlers.AuthMiddleware)
-	} else {
-		// 不受保护的路由
-		e.GET("/", handlers.HomeHandler)
-		e.GET("/processes.html", handlers.ProcessesHandler)
-		e.GET("/processes", handlers.ListProcessesHandler)
-		e.GET("/processes/:id", handlers.GetProcessHandler)
-		e.POST("/process", handlers.CreateProcessHandler)
-		e.PUT("/process/:id", handlers.UpdateProcessHandler)
-		e.DELETE("/process/:id", handlers.DeleteProcessHandler)
-		e.POST("/process/:id/start", handlers.StartProcessHandler)
-		e.POST("/process/:id/stop", handlers.StopProcessHandler)
-		e.GET("/process/:id/logstream", handlers.LogStreamHandler)
-		e.GET("/ws", websocket.HandleWebSocket)
-
-		e.GET("/tasks.html", handlers.TasksHandler)
-		e.GET("/api/tasks", handlers.GetTasksHandler)
-		e.POST("/api/tasks", handlers.CreateTaskHandler)
-		e.PUT("/api/tasks/:id", handlers.UpdateTaskHandler)
-		e.DELETE("/api/tasks/:id", handlers.DeleteTaskHandler)
-		e.POST("/api/tasks/:id/toggle", handlers.ToggleTaskHandler)
-		e.POST("/api/tasks/:id/run", handlers.RunTaskHandler)
-		e.GET("/api/tasks/:id/logs", handlers.GetTaskLogsHandler)
-	}
 }

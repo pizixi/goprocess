@@ -1,5 +1,7 @@
 package models
 
+import "sort"
+
 // Process 定义进程结构体
 type Process struct {
 	ID         uint   `json:"ID" gorm:"primaryKey"`
@@ -20,19 +22,14 @@ type RuntimeProcess struct {
 	ManualStop bool   `json:"ManualStop"`
 }
 
-var RuntimeProcesses map[uint]*RuntimeProcess
-
-func GetAllProcesses() ([]Process, error) {
-	var processes []Process
-	err := DB.Find(&processes).Error
-	return processes, err
+func SortRuntimeProcesses(processes []*RuntimeProcess) []*RuntimeProcess {
+	sort.Slice(processes, func(i, j int) bool {
+		return processes[i].Process.ID < processes[j].Process.ID
+	})
+	return processes
 }
 
-func GetProcessByID(id uint) (*Process, error) {
-	var process Process
-	err := DB.First(&process, id).Error
-	return &process, err
-}
+// var RuntimeProcesses map[uint]*RuntimeProcess
 
 // const processesFilePath = "processes.json"
 

@@ -23,6 +23,10 @@ func ProcessesHandler(c echo.Context) error {
 func TasksHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "tasks.html", nil)
 }
+
+func ServerLogsHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "serverlogs.html", nil)
+}
 func LoginPostHandler(c echo.Context) error {
 	username := c.FormValue("username")
 	password := c.FormValue("password")

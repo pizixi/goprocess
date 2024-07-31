@@ -2,11 +2,15 @@ package utils
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
+	"sync"
 	"unicode/utf8"
 
+	"github.com/nxadm/tail"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/japanese"
@@ -17,6 +21,92 @@ import (
 	"golang.org/x/text/transform"
 )
 
+type LogReader struct {
+	FilePath string
+	Offset   int64
+	Lines    chan string
+	done     chan struct{}
+	stopOnce sync.Once
+	wg       sync.WaitGroup
+}
+
+func NewLogReader(filePath string, initialOffset int64) *LogReader {
+	return &LogReader{
+		FilePath: filePath,
+		Offset:   initialOffset,
+		Lines:    make(chan string),
+		done:     make(chan struct{}),
+	}
+}
+
+func (lr *LogReader) Start() error {
+	file, err := os.Open(lr.FilePath)
+	if err != nil {
+		return fmt.Errorf("opening log file: %w", err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("getting file info: %w", err)
+	}
+
+	byteCount := fileInfo.Size()
+	lr.Offset = CalculateOffset(file, byteCount, lr.Offset)
+
+	tailFile, err := tail.TailFile(lr.FilePath, tail.Config{
+		ReOpen:    true,
+		Follow:    true,
+		Location:  &tail.SeekInfo{Offset: lr.Offset, Whence: 2},
+		MustExist: false,
+		Poll:      true,
+	})
+	if err != nil {
+		return fmt.Errorf("tailing log file: %w", err)
+	}
+
+	lr.wg.Add(1)
+	go func() {
+		defer lr.wg.Done()
+		defer tailFile.Cleanup()
+
+		for {
+			select {
+			case <-lr.done:
+				return
+			case line, ok := <-tailFile.Lines:
+				if !ok {
+					return
+				}
+				if line.Err != nil {
+					select {
+					case lr.Lines <- fmt.Sprintf("Error reading log file: %s", line.Err.Error()):
+					case <-lr.done:
+					}
+					return
+				}
+				trimmedLine := strings.TrimRight(EnsureUTF8(line.Text), "\r\n")
+				if trimmedLine != "" {
+					select {
+					case lr.Lines <- trimmedLine:
+					case <-lr.done:
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (lr *LogReader) Stop() {
+	lr.stopOnce.Do(func() {
+		close(lr.done)
+		lr.wg.Wait()
+		close(lr.Lines)
+	})
+}
 func CalculateOffset(file *os.File, byteCount int64, seekCount int64) int64 {
 	if byteCount <= seekCount {
 		return -byteCount

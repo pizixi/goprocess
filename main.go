@@ -7,10 +7,11 @@ import (
 
 	"github.com/kardianos/service"
 	goprocess "github.com/pizixi/goprocess/cmd"
-	"github.com/pizixi/goprocess/internal/services"
 )
 
-var logger service.Logger
+var (
+	logger service.Logger
+)
 
 type program struct{}
 
@@ -21,7 +22,10 @@ func (p *program) Start(s service.Service) error {
 
 func (p *program) Stop(s service.Service) error {
 	log.Println("Stopping service...")
-	services.StopAllProcesses() // 直接调用停止所有进程的函数
+	// ps.StopAllProcesses() // 直接调用停止所有进程的函数
+	if goprocess.PS != nil {
+		goprocess.PS.StopAllProcesses()
+	}
 	return nil
 }
 
@@ -37,7 +41,7 @@ func main() {
 	svcConfig := &service.Config{
 		Name:             "GoProcess",
 		DisplayName:      "GoProcess Service",
-		Description:      "This is a process management service.",
+		Description:      "This is a golang process management service.",
 		WorkingDirectory: curDir, // 好像没用
 	}
 

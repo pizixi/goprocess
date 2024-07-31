@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"syscall"
 	"time"
 
@@ -17,47 +16,46 @@ import (
 	"github.com/pizixi/goprocess/internal/websocket"
 )
 
-var Processes map[uint]*kexec.KCommand
-var mu sync.Mutex
+type ProcessService struct {
+	PM *models.ProcessManager
+}
 
-func InitializeAndAutoStartProcesses() {
+func NewProcessService(pm *models.ProcessManager) *ProcessService {
+	return &ProcessService{PM: pm}
+}
+
+func (ps *ProcessService) InitializeAndAutoStartProcesses() {
 	time.Sleep(2 * time.Second)
-	for _, rp := range models.RuntimeProcesses {
+	for _, rp := range ps.PM.GetAllProcesses() {
 		if rp.AutoStart {
 			log.Printf("Starting process: %d \n", rp.ID)
-			go StartProcessById(rp.ID)
+			go ps.StartProcessById(rp.ID)
 		}
 	}
 }
 
-func SetupCloseHandler() {
+func (ps *ProcessService) SetupCloseHandler() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
 		log.Println("Shutting down...")
-		StopAllProcesses()
+		ps.StopAllProcesses()
 		os.Exit(0)
 	}()
 }
 
-func StopAllProcesses() {
-	var wg sync.WaitGroup
-	for id, rp := range models.RuntimeProcesses {
+func (ps *ProcessService) StopAllProcesses() {
+	for _, rp := range ps.PM.GetAllProcesses() {
 		if rp.Status == "running" || rp.Status == "starting" {
-			wg.Add(1)
-			go func(id uint) {
-				defer wg.Done()
-				StopProcessByID(id)
-			}(id)
+			ps.StopProcessByID(rp.ID)
 		}
 	}
-	wg.Wait()
 	log.Println("All processes stopped")
 }
 
-func StartProcessById(id uint) {
-	rp, exists := models.RuntimeProcesses[id]
+func (ps *ProcessService) StartProcessById(id uint) {
+	rp, exists := ps.PM.GetProcess(id)
 	if !exists {
 		log.Printf("Error fetching process %d", id)
 		return
@@ -68,7 +66,7 @@ func StartProcessById(id uint) {
 		return
 	}
 
-	rp.Status = "starting"
+	ps.PM.UpdateProcessStatus(id, "starting", 0)
 	websocket.BroadcastStatus(*rp)
 
 	startTime := time.Now()
@@ -80,7 +78,7 @@ func StartProcessById(id uint) {
 		logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
 		if err := os.MkdirAll(logDir, 0755); err != nil {
 			log.Printf("Error creating log directory for process %d: %v", id, err)
-			rp.Status = "error"
+			ps.PM.UpdateProcessStatus(id, "error", 0)
 			websocket.BroadcastStatus(*rp)
 			return
 		}
@@ -97,9 +95,7 @@ func StartProcessById(id uint) {
 		cmd.Stdout = logFile
 		cmd.Stderr = logFile
 
-		mu.Lock()
-		Processes[rp.ID] = cmd
-		mu.Unlock()
+		ps.PM.SetCommand(rp.ID, cmd)
 
 		if err := cmd.Start(); err != nil {
 			log.Printf("Error starting process %d: %v", id, err)
@@ -108,8 +104,7 @@ func StartProcessById(id uint) {
 			continue
 		}
 
-		rp.PID = cmd.Process.Pid
-		rp.Status = "running"
+		ps.PM.UpdateProcessStatus(id, "running", cmd.Process.Pid)
 		if time.Since(startTime) > time.Minute {
 			retryCount = 0
 		}
@@ -120,9 +115,7 @@ func StartProcessById(id uint) {
 
 		cmd.Wait()
 
-		mu.Lock()
-		delete(Processes, rp.ID)
-		mu.Unlock()
+		ps.PM.RemoveCommand(rp.ID)
 
 		if rp.ManualStop {
 			log.Printf("Process %d was manually stopped. Not restarting.", id)
@@ -136,22 +129,19 @@ func StartProcessById(id uint) {
 	}
 
 	if retryCount >= rp.RetryCount {
-		rp.Status = "error"
+		ps.PM.UpdateProcessStatus(id, "error", 0)
 	} else {
-		rp.Status = "stopped"
+		ps.PM.UpdateProcessStatus(id, "stopped", 0)
 	}
-	rp.PID = 0
 	go func() {
 		time.Sleep(1 * time.Second)
 		websocket.BroadcastStatus(*rp)
 	}()
 }
 
-func StopProcessByID(id uint) {
-	mu.Lock()
-	cmd, exists := Processes[id]
-	rp, rpExists := models.RuntimeProcesses[id]
-	mu.Unlock()
+func (ps *ProcessService) StopProcessByID(id uint) {
+	cmd, exists := ps.PM.GetCommand(id)
+	rp, rpExists := ps.PM.GetProcess(id)
 
 	if !exists || !rpExists {
 		log.Printf("Process %d not found", id)
@@ -160,9 +150,8 @@ func StopProcessByID(id uint) {
 
 	log.Printf("Stopping process %s (ID: %d, PID: %d)", rp.Name, id, rp.PID)
 
-	rp.Status = "stopping"
-	rp.ManualStop = true
-	// websocket.BroadcastStatus(*rp)
+	ps.PM.UpdateProcessStatus(id, "stopping", rp.PID)
+	ps.PM.SetManualStop(id, true)
 
 	stopch := make(chan bool)
 	go func() {
@@ -184,12 +173,9 @@ func StopProcessByID(id uint) {
 
 	err := cmd.Wait()
 
-	mu.Lock()
-	delete(Processes, id)
-	mu.Unlock()
+	ps.PM.RemoveCommand(id)
 
-	rp.Status = "stopped"
-	rp.PID = 0
+	ps.PM.UpdateProcessStatus(id, "stopped", 0)
 
 	if err != nil && err.Error() != "signal: killed" {
 		log.Printf("Error waiting for process %d to stop: %v", id, err)

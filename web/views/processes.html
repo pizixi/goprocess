@@ -5,64 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Process Manager</title>
     <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/logs.css">
     <style>
-        .terminal {
-            background-color: #1d1f21;
-            color: #c5c8c6;
-            font-family: 'Source Code Pro', 'Monaco', 'Consolas', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            padding: 20px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .terminal::-webkit-scrollbar {
-            width: 10px;
-        }
-        .terminal::-webkit-scrollbar-track {
-            background: #282a2e;
-        }
-        .terminal::-webkit-scrollbar-thumb {
-            background: #999;
-            border-radius: 5px;
-        }
-        .terminal::-webkit-scrollbar-thumb:hover {
-            background: #777;
-        }
-        .log-controls {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-bottom: 1px solid #ddd;
-        }
-        .log-controls label, .log-controls div {
-            display: flex;
-            align-items: center;
-            margin-right: 15px;
-        }
-        .log-controls input[type="checkbox"], .log-controls input[type="number"] {
-            margin-right: 5px;
-        }
-        .log-controls button {
-            padding: 5px 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .log-controls button:hover {
-            background-color: #45a049;
-        }
-        .log-controls input[type="text"], .log-controls input[type="number"] {
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-left: 5px;
-        }
         .process-status {
             padding: 3px 8px;
             border-radius: 4px;
@@ -298,7 +242,15 @@ layui.use(['table', 'form', 'layer'], function(){
         layer.open({
             type: 1,
             title: title,
-            area: [`${maxWidth}px`, '480px'],
+            area: [`${maxWidth}px`, '550px'],
+            maxmin: true, // 启用最大化和最小化按钮
+            full: false,  // 默认不全屏
+            shade: 0.8, // 遮罩透明度
+            shadeClose: true, // 点击遮罩关闭窗口
+            resize: true, // 允许窗口拖拽
+            resizing: function(layero){
+                form.render(); // 重新渲染表单，确保元素正确显示
+            },
             content: `
                 <form class="layui-form" style="padding: 20px;">
                     <div class="layui-form-item">
@@ -380,56 +332,6 @@ layui.use(['table', 'form', 'layer'], function(){
             return false;
         });
     }
-
-    // function startProcess(id) {
-    //     fetch('/processes/' + id)
-    //         .then(response => response.json())
-    //         .then(process => {
-    //             if (process.Status === 'running') {
-    //                 layer.msg('进程已经在运行中', {icon: 2});
-    //             } else if (process.Status === 'starting') {
-    //                 layer.msg('进程正在启动中', {icon: 2});
-    //             } else {
-    //                 fetch('/process/' + id + '/start', {method: 'POST'})
-    //                     .then(response => response.json())
-    //                     .then(data => {
-    //                         table.reload('processTable');
-    //                         layer.msg('进程已启动', {icon: 1});
-    //                     })
-    //                     .catch(error => {
-    //                         layer.msg('启动失败: ' + error.message, {icon: 2});
-    //                     });
-    //             }
-    //         })
-    //         .catch(error => {
-    //             layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
-    //         });
-    // }
-
-    // function stopProcess(id) {
-    //     fetch('/processes/' + id)
-    //         .then(response => response.json())
-    //         .then(process => {
-    //             if (process.Status === 'stopped') {
-    //                 layer.msg('进程已经停止', {icon: 2});
-    //             } else if (process.Status === 'stopping') {
-    //                 layer.msg('进程正在停止中', {icon: 2});
-    //             } else {
-    //                 fetch('/process/' + id + '/stop', {method: 'POST'})
-    //                     .then(response => response.json())
-    //                     .then(data => {
-    //                         table.reload('processTable');
-    //                         layer.msg('进程已停止', {icon: 1});
-    //                     })
-    //                     .catch(error => {
-    //                         layer.msg('停止失败: ' + error.message, {icon: 2});
-    //                     });
-    //             }
-    //         })
-    //         .catch(error => {
-    //             layer.msg('获取进程信息失败: ' + error.message, {icon: 2});
-    //         });
-    // }
 
     // startProcess 函数
     function startProcess(id) {
@@ -525,18 +427,29 @@ layui.use(['table', 'form', 'layer'], function(){
             moveType: 1,
             maxmin: true,
             content: `
-                <div id="logWrapper" style="display: flex; flex-direction: column; height: 100%;">
-                    <div class="log-controls">
-                        <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
-                        <button id="clearLogs">清空日志</button>
-                        <div style="margin-left: 20px;">
-                            <label for="maxLines">最大行数:</label>
-                            <input type="number" id="maxLines" value="800" min="100" step="100">
+                <main>
+                    <div id="logWrapper">
+                        <div class="log-controls">
+                            <div class="control-group">
+                                <label class="switch">
+                                    <input type="checkbox" id="autoScroll" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                                <span>自动滚动</span>
+                            </div>
+                            <button id="clearLogs" class="btn"><i class="fas fa-trash-alt"></i> 清空日志</button>
+                            <div class="control-group">
+                                <label for="maxLines">最大行数:</label>
+                                <input type="number" id="maxLines" value="800" min="100" step="100">
+                            </div>
+                            <div class="search-container">
+                                <input type="text" id="filterLogs" placeholder="筛选日志...">
+                                <i class="fas fa-search"></i>
+                            </div>
                         </div>
-                        <input type="text" id="filterLogs" placeholder="筛选日志...">
+                        <div id="logContainer" class="terminal"></div>
                     </div>
-                    <div id="logContainer" class="terminal" style="flex-grow: 1; overflow-y: auto;"></div>
-                </div>
+                </main>
             `,
             success: function(layero, index) {
                 const logContainer = document.getElementById('logContainer');

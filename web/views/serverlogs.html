@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统日志面板</title>
+    <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="/static/logs.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1><i class="fas fa-server"></i> 系统日志面板</h1>
+        </header>
+        <main>
+            <div id="logWrapper">
+                <div class="log-controls">
+                    <div class="control-group">
+                        <label class="switch">
+                            <input type="checkbox" id="autoScroll" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span>自动滚动</span>
+                    </div>
+                    <button id="clearLogs" class="btn"><i class="fas fa-trash-alt"></i> 清空日志</button>
+                    <div class="control-group">
+                        <label for="maxLines">最大行数:</label>
+                        <input type="number" id="maxLines" value="800" min="100" step="100">
+                    </div>
+                    <div class="search-container">
+                        <input type="text" id="filterLogs" placeholder="筛选日志...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                <div id="logContainer" class="terminal"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/layui-v2.9.14/layui/layui.js"></script>
+    <script>
+    layui.use(['layer'], function(){
+        var layer = layui.layer;
+
+        let source;
+        let MAX_LINES = 800;
+        const logContainer = document.getElementById('logContainer');
+        const autoScrollCheckbox = document.getElementById('autoScroll');
+        const clearLogsButton = document.getElementById('clearLogs');
+        const filterLogsInput = document.getElementById('filterLogs');
+        const maxLinesInput = document.getElementById('maxLines');
+
+        let logLines = [];
+
+        function updateLogDisplay() {
+            logContainer.textContent = logLines.join('\n');
+            if (autoScrollCheckbox.checked) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        function trimLogLines() {
+            while (logLines.length > MAX_LINES) {
+                logLines.shift();
+            }
+        }
+
+        maxLinesInput.onchange = function() {
+            MAX_LINES = parseInt(this.value, 10);
+            trimLogLines();
+            updateLogDisplay();
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        source = new EventSource('/api/serverlogs');
+        source.onmessage = function(event) {
+            const logLine = event.data;
+            if (!filterLogsInput.value || logLine.includes(filterLogsInput.value)) {
+                logLines.push(logLine);
+                trimLogLines();
+                updateLogDisplay();
+            }
+        };
+
+        clearLogsButton.onclick = function() {
+            logLines = [];
+            updateLogDisplay();
+        };
+
+        filterLogsInput.oninput = function() {
+            const filter = this.value;
+            const filteredLines = logLines.filter(line => line.includes(filter));
+            logContainer.textContent = filteredLines.join('\n');
+        };
+
+        window.onbeforeunload = function() {
+            if (source) {
+                source.close();
+            }
+        };
+    });
+    </script>
+</body>
+</html>

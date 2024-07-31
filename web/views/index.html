@@ -142,6 +142,21 @@
                 left: 230px;
             }
         }
+        .menu-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-25%);
+            left: 10px;
+            z-index: 1001;
+            background-color: #58c9b0;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
     </style>
 </head>
 <body>
@@ -153,13 +168,14 @@
         <ul>
             <li><a href="processes.html" target="content-frame" class="current"><i class="fas fa-home"></i> 进程管理</a></li>
             <li><a href="tasks.html" target="content-frame"><i class="fas fa-tasks"></i> 定时任务</a></li>
+            <li><a href="serverlogs.html" target="content-frame"><i class="fas fa-server"></i> 系统日志</a></li>
             <!-- <li><a href="page2.html" target="content-frame"><i class="fas fa-info-circle"></i> 关于我们</a></li>
             <li><a href="page3.html" target="content-frame"><i class="fas fa-envelope"></i> 联系我们</a></li>
             <li><a href="page4.html" target="content-frame"><i class="fas fa-cog"></i> 设置</a></li>
             <li><a href="page5.html" target="content-frame"><i class="fas fa-question-circle"></i> 帮助</a></li> -->
         </ul>
     </div>
-    <button id="menu-toggle"><i class="fas fa-bars"></i></button>
+    <button id="menu-toggle" class="menu-button"><i class="fas fa-bars"></i></button>
     <div id="content">
         <iframe name="content-frame" src="processes.html"></iframe>
     </div>
