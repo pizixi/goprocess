@@ -254,37 +254,37 @@ layui.use(['table', 'form', 'layer'], function(){
             content: `
                 <form class="layui-form" style="padding: 20px;">
                     <div class="layui-form-item">
-                        <label class="layui-form-label">进程名:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">进程名:</label>
                         <div class="layui-input-block">
                             <input type="text" name="Name" required lay-verify="required" placeholder="请输入进程名" class="layui-input" value="${data ? data.Name : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">命令行:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">命令行:</label>
                         <div class="layui-input-block">
                             <input type="text" name="Command" required lay-verify="required" placeholder="请输入命令行" class="layui-input" value="${data ? data.Command : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">工作目录:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">工作目录:</label>
                         <div class="layui-input-block">
                             <input type="text" name="WorkDir" placeholder="请输入工作目录" class="layui-input" value="${data ? data.WorkDir : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">用户:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">用户:</label>
                         <div class="layui-input-block">
                             <input type="text" name="User" placeholder="请输入用户" class="layui-input" value="${data ? data.User : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">重试次数:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">重试次数:</label>
                         <div class="layui-input-block">
                             <input type="number" name="RetryCount" required lay-verify="required" placeholder="请输入重试次数" class="layui-input" value="${data ? data.RetryCount : '3'}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">自启:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">自启:</label>
                         <div class="layui-input-block">
                             <input type="checkbox" name="AutoStart" lay-skin="switch" lay-text="ON|OFF" ${data && data.AutoStart ? 'checked' : ''}>
                         </div>
@@ -422,7 +422,7 @@ layui.use(['table', 'form', 'layer'], function(){
         layer.open({
             type: 1,
             title: '进程日志',
-            area: ['90%', '90%'],
+            area: ['90%', '80%'],
             shadeClose: true,
             moveType: 1,
             maxmin: true,

@@ -273,6 +273,11 @@ layui.use(['table', 'form', 'layer'], function(){
     });
 
     function showTaskForm(data) {
+        if (data && data.isEnabled) {
+            layer.msg('不允许修改已启用的定时任务，请先禁用任务再修改.', { icon: 5 }); // 使用 Layer UI 的提示框
+            return;
+        }
+
         const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
         const maxWidth = Math.min(650, screenWidth - 40);
         layer.open({
@@ -290,27 +295,33 @@ layui.use(['table', 'form', 'layer'], function(){
             content: `
                 <form class="layui-form" style="padding: 20px;">
                     <div class="layui-form-item">
-                        <label class="layui-form-label">任务名:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">任务名:</label>
                         <div class="layui-input-block">
                             <input type="text" name="name" required lay-verify="required" placeholder="请输入任务名" class="layui-input" value="${data ? data.name : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">定时表达式:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">定时表达式:</label>
                         <div class="layui-input-block">
                             <input type="text" name="cron" required lay-verify="required" placeholder="请输入Cron表达式" class="layui-input" value="${data ? data.cron : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">工作目录:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">工作目录:</label>
                         <div class="layui-input-block">
                             <input type="text" name="workDir" required lay-verify="required" placeholder="请输入工作目录" class="layui-input" value="${data ? data.workDir : ''}">
                         </div>
                     </div>
                     <div class="layui-form-item">
-                        <label class="layui-form-label">任务命令:</label>
+                        <label class="layui-form-label" style="white-space: nowrap;">任务命令:</label>
                         <div class="layui-input-block">
-                             <textarea name="command" placeholder="请输入任务命令" class="layui-textarea" style="height: 150px;">${data ? data.command : ''}</textarea>
+                            <textarea name="command" placeholder="请输入任务命令" class="layui-textarea" style="height: 150px;">${data ? data.command : ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="white-space: nowrap;">超时时间 (秒):</label>
+                        <div class="layui-input-block">
+                            <input type="number" name="timeout" required lay-verify="required" placeholder="请输入超时时间" class="layui-input" value="${data ? data.timeout : '86400'}">
                         </div>
                     </div>
                     <div class="layui-form-item">
@@ -323,7 +334,7 @@ layui.use(['table', 'form', 'layer'], function(){
             `
         });
         form.render();
-        
+
         document.getElementById('closeBtn').addEventListener('click', function() {
             layer.closeAll();
         });
@@ -331,10 +342,12 @@ layui.use(['table', 'form', 'layer'], function(){
         form.on('submit(taskForm)', function(formData) {
             var taskData = formData.field;
             taskData.isEnabled = taskData.isEnabled === 'on';
-            
+            // 将 timeout 字段从字符串转换为数字
+            taskData.timeout = parseInt(taskData.timeout, 10);
+
             var url = data ? '/api/tasks/' + data.ID : '/api/tasks';
             var method = data ? 'PUT' : 'POST';
-            
+
             fetch(url, {
                 method: method,
                 headers: {
@@ -358,10 +371,9 @@ layui.use(['table', 'form', 'layer'], function(){
             .catch(error => {
                 layer.msg((data ? '任务更新失败：' : '任务添加失败：') + error.message);
             });
-            
+
             return false; // 阻止表单默认提交行为
         });
-
     }
 
     function showLogs(id) {
@@ -371,7 +383,7 @@ layui.use(['table', 'form', 'layer'], function(){
         layer.open({
             type: 1,
             title: '任务日志',
-            area: ['90%', '90%'],
+            area: ['90%', '80%'],
             shadeClose: true,
             moveType: 1,
             maxmin: true,

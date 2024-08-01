@@ -11,5 +11,6 @@ type Task struct {
 	WorkDir     string       `json:"workDir"`
 	Command     string       `json:"command"`
 	IsEnabled   bool         `json:"isEnabled"`
+	Timeout     int          `json:"timeout"`
 	CronEntryID cron.EntryID `json:"-" gorm:"-"`
 }

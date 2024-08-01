@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/codeskyblue/kexec"
@@ -86,9 +88,15 @@ func (s *TaskService) PrintEnabledTasks() {
 		log.Printf("任务ID: %d, 名称: %s, Cron: %s,CronEntryID: %v \n", task.ID, task.Name, task.Cron, task.CronEntryID)
 	}
 }
+
 func ExecuteTask(task *models.Task) {
 	logDir := filepath.Join("logs", fmt.Sprintf("task_%d", task.ID))
 	var cmd *kexec.KCommand
+
+	// 创建一个带有超时的 context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(task.Timeout)*time.Second)
+	defer cancel()
+
 	switch runtime.GOOS {
 	case "windows":
 		batFilePath := filepath.Join(task.WorkDir, fmt.Sprintf("task_%d.bat", task.ID))
@@ -96,16 +104,18 @@ func ExecuteTask(task *models.Task) {
 		if err != nil {
 			log.Printf("为任务 %v 创建批处理文件时出错: %v", task.ID, err)
 		}
-		defer os.Remove(batFilePath) // 运行完成后删除.bat脚本文件
+		defer os.Remove(batFilePath)
 		cmd = kexec.CommandString(fmt.Sprintf("task_%d.bat", task.ID))
 	default:
 		cmd = kexec.CommandString(task.Command)
 	}
 	cmd.Dir = task.WorkDir
+
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Printf("为任务 %v 创建日志目录时出错: %v", task.ID, err)
 		return
 	}
+
 	logFile := &lumberjack.Logger{
 		Filename:   filepath.Join(logDir, "output.log"),
 		MaxSize:    10,
@@ -113,17 +123,47 @@ func ExecuteTask(task *models.Task) {
 		MaxAge:     28,
 		Compress:   true,
 	}
-	// 在任务开始时写入提示信息
+
 	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	err := cmd.Run()
-	if err != nil {
-		fmt.Fprintf(logFile, "执行任务时出错: %v\n", err)
+
+	// 在一个 goroutine 中运行命令
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Run()
+	}()
+
+	// 等待命令完成或超时
+	select {
+	case <-ctx.Done():
+		// 超时，杀死进程及其子进程
+		if cmd.Process != nil {
+			// killProcessGroup(cmd.Process.Pid)
+			if runtime.GOOS == "windows" {
+				cmd.Terminate(os.Kill)
+			} else {
+				cmd.Process.Signal(syscall.SIGKILL)
+			}
+		}
+		fmt.Fprintf(logFile, "任务超时，已强制终止\n")
+	case err := <-done:
+		if err != nil {
+			fmt.Fprintf(logFile, "执行任务时出错: %v\n", err)
+		}
 	}
-	// 在任务结束时写入提示信息
+
 	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
 }
+
+// // killProcessGroup 杀死指定 PID 的进程及其所有子进程
+// func killProcessGroup(pid int) {
+// 	if runtime.GOOS == "windows" {
+// 		exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(pid)).Run()
+// 	} else {
+// 		syscall.Kill(-pid, syscall.SIGKILL)
+// 	}
+// }
 
 // func ExecuteTask(task *models.Task) {
 // 	logDir := filepath.Join("logs", fmt.Sprintf("task_%d", task.ID))
@@ -145,7 +185,6 @@ func ExecuteTask(task *models.Task) {
 // 		log.Printf("为任务 %v 创建日志目录时出错: %v", task.ID, err)
 // 		return
 // 	}
-
 // 	logFile := &lumberjack.Logger{
 // 		Filename:   filepath.Join(logDir, "output.log"),
 // 		MaxSize:    10,
@@ -153,43 +192,16 @@ func ExecuteTask(task *models.Task) {
 // 		MaxAge:     28,
 // 		Compress:   true,
 // 	}
-
-// 	// 创建一个带缓冲的writer
-// 	bufferedWriter := bufio.NewWriter(logFile)
-
-// 	// 创建一个io.Writer，在每次写入后都会刷新缓冲区
-// 	writer := &flushWriter{bufferedWriter}
-
 // 	// 在任务开始时写入提示信息
-// 	fmt.Fprintf(writer, "---任务ID: %d 任务名: %s 开始运行于: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
-
-// 	cmd.Stdout = writer
-// 	cmd.Stderr = writer
-
+// 	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
+// 	cmd.Stdout = logFile
+// 	cmd.Stderr = logFile
 // 	err := cmd.Run()
 // 	if err != nil {
-// 		fmt.Fprintf(writer, "执行任务时出错: %v\n", err)
+// 		fmt.Fprintf(logFile, "执行任务时出错: %v\n", err)
 // 	}
-
 // 	// 在任务结束时写入提示信息
-// 	fmt.Fprintf(writer, "---任务ID: %d 任务名: %s 结束运行于: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
-
-// 	// 确保所有数据都被写入
-// 	bufferedWriter.Flush()
-// }
-
-// // flushWriter 是一个自定义的 io.Writer，它在每次写入后都会刷新缓冲区
-// type flushWriter struct {
-// 	w *bufio.Writer
-// }
-
-// func (fw *flushWriter) Write(p []byte) (n int, err error) {
-// 	n, err = fw.w.Write(p)
-// 	if err != nil {
-// 		return
-// 	}
-// 	err = fw.w.Flush()
-// 	return
+// 	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
 // }
 
 func writeCommandToBatFile(filePath string, command string) error {

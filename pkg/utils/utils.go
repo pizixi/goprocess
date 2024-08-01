@@ -46,18 +46,18 @@ func (lr *LogReader) Start() error {
 	}
 	defer file.Close()
 
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("getting file info: %w", err)
-	}
+	// fileInfo, err := file.Stat()
+	// if err != nil {
+	// 	return fmt.Errorf("getting file info: %w", err)
+	// }
 
-	byteCount := fileInfo.Size()
-	lr.Offset = CalculateOffset(file, byteCount, lr.Offset)
+	// byteCount := fileInfo.Size()
+	// lr.Offset = CalculateOffset(file, byteCount, lr.Offset)
 
 	tailFile, err := tail.TailFile(lr.FilePath, tail.Config{
 		ReOpen:    true,
 		Follow:    true,
-		Location:  &tail.SeekInfo{Offset: lr.Offset, Whence: 2},
+		Location:  &tail.SeekInfo{Offset: -5000, Whence: 2},
 		MustExist: false,
 		Poll:      true,
 	})
