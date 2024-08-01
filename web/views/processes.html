@@ -116,7 +116,7 @@ layui.use(['table', 'form', 'layer'], function(){
     // 初始化表格
     table.render({
         elem: '#processTable',
-        url: '/processes',
+        url: '/api/processes',
         cols: getCols(),
         page: { limit: 15, limits: [15, 30, 45, 60, 90] },
         lineStyle: 'height: 60px;'
@@ -309,7 +309,7 @@ layui.use(['table', 'form', 'layer'], function(){
             processData.AutoStart = processData.AutoStart === 'on';
             processData.RetryCount = parseInt(processData.RetryCount);
             
-            var url = data ? '/process/' + data.ID : '/process';
+            var url = data ? '/api/process/' + data.ID : '/api/process';
             var method = data ? 'PUT' : 'POST';
             
             fetch(url, {
@@ -335,7 +335,7 @@ layui.use(['table', 'form', 'layer'], function(){
 
     // startProcess 函数
     function startProcess(id) {
-        fetch('/processes/' + id)
+        fetch('/api/processes/' + id)
             .then(response => response.json())
             .then(process => {
                 if (process.Status === 'running') {
@@ -343,7 +343,7 @@ layui.use(['table', 'form', 'layer'], function(){
                 } else if (process.Status === 'starting') {
                     layer.msg('进程正在启动中', {icon: 2});
                 } else {
-                    fetch('/process/' + id + '/start', {method: 'POST'})
+                    fetch('/api/process/' + id + '/start', {method: 'POST'})
                         .then(response => response.json())
                         .then(data => {
                             layer.msg('进程已开始启动', {icon: 1});
@@ -361,7 +361,7 @@ layui.use(['table', 'form', 'layer'], function(){
 
     // stopProcess 函数
     function stopProcess(id) {
-        fetch('/processes/' + id)
+        fetch('/api/processes/' + id)
             .then(response => response.json())
             .then(process => {
                 if (process.Status === 'stopped') {
@@ -371,7 +371,7 @@ layui.use(['table', 'form', 'layer'], function(){
                 } else if (process.Status === 'error') {
                     layer.msg('进程出错，无进程需要停止', {icon: 2});
                 } else {
-                    fetch('/process/' + id + '/stop', {method: 'POST'})
+                    fetch('/api/process/' + id + '/stop', {method: 'POST'})
                         .then(response => response.json())
                         .then(data => {
                             layer.msg('进程已开始停止', {icon: 1});
@@ -387,14 +387,14 @@ layui.use(['table', 'form', 'layer'], function(){
     }
 
     function deleteProcess(id) {
-        fetch('/processes/' + id)
+        fetch('/api/processes/' + id)
             .then(response => response.json())
             .then(process => {
                 if (process.Status === 'running') {
                     layer.msg('无法删除正在运行的进程，请先停止进程', {icon: 2});
                 } else {
                     layer.confirm('确定删除这个进程吗？', function(index){
-                        fetch('/process/' + id, {method: 'DELETE'})
+                        fetch('/api/process/' + id, {method: 'DELETE'})
                             .then(response => {
                                 if (response.ok) {
                                     table.reload('processTable');
@@ -481,7 +481,7 @@ layui.use(['table', 'form', 'layer'], function(){
                     updateLogDisplay();
                 };
 
-                source = new EventSource('/process/' + id + '/logstream');
+                source = new EventSource('/api/process/' + id + '/logstream');
                 source.onmessage = function(event) {
                     const logLine = event.data;
                     if (!filterLogsInput.value || logLine.includes(filterLogsInput.value)) {

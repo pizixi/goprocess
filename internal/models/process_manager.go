@@ -65,8 +65,10 @@ func (pm *ProcessManager) GetProcess(id uint) (*RuntimeProcess, bool) {
 }
 
 func (pm *ProcessManager) AddProcess(ctx context.Context, p *Process) (*RuntimeProcess, error) {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
+	// pm.mu.RLock()
+	// defer pm.mu.RUnlock()
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 	if err := pm.db.Create(ctx, p); err != nil {
 		return nil, err
 	}
@@ -78,9 +80,9 @@ func (pm *ProcessManager) AddProcess(ctx context.Context, p *Process) (*RuntimeP
 		ManualStop: false,
 	}
 
-	pm.mu.Lock()
+	// pm.mu.Lock()
 	pm.processes[p.ID] = rp
-	pm.mu.Unlock()
+	// pm.mu.Unlock()
 
 	return rp, nil
 }
