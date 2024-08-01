@@ -371,34 +371,32 @@ layui.use(['table', 'form', 'layer'], function(){
         layer.open({
             type: 1,
             title: '任务日志',
-            area: ['90%', '80%'],
+            area: ['90%', '90%'],
             shadeClose: true,
             moveType: 1,
             maxmin: true,
             content: `
-                    <main>
-                        <div id="logWrapper">
-                            <div class="log-controls">
-                                <div class="control-group">
-                                    <label class="switch">
-                                        <input type="checkbox" id="autoScroll" checked>
-                                        <span class="slider round"></span>
-                                    </label>
-                                    <span>自动滚动</span>
-                                </div>
-                                <button id="clearLogs" class="btn"><i class="fas fa-trash-alt"></i> 清空日志</button>
-                                <div class="control-group">
-                                    <label for="maxLines">最大行数:</label>
-                                    <input type="number" id="maxLines" value="800" min="100" step="100">
-                                </div>
-                                <div class="search-container">
-                                    <input type="text" id="filterLogs" placeholder="筛选日志...">
-                                    <i class="fas fa-search"></i>
-                                </div>
-                            </div>
-                            <div id="logContainer" class="terminal"></div>
+                <div id="logWrapper" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="log-controls" style="flex: 0 0 auto; padding: 10px;">
+                        <div class="control-group">
+                            <label class="switch">
+                                <input type="checkbox" id="autoScroll" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span>自动滚动</span>
                         </div>
-                    </main>
+                        <button id="clearLogs" class="btn"><i class="fas fa-trash-alt"></i> 清空日志</button>
+                        <div class="control-group">
+                            <label for="maxLines">最大行数:</label>
+                            <input type="number" id="maxLines" value="800" min="100" step="100">
+                        </div>
+                        <div class="search-container">
+                            <input type="text" id="filterLogs" placeholder="筛选日志...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+                    <div id="logContainer" class="terminal" style="flex: 1 1 auto; overflow-y: auto;"></div>
+                </div>
             `,
             success: function(layero, index) {
                 const logContainer = document.getElementById('logContainer');
@@ -407,12 +405,13 @@ layui.use(['table', 'form', 'layer'], function(){
                 const filterLogsInput = document.getElementById('filterLogs');
                 const maxLinesInput = document.getElementById('maxLines');
 
-                logContainer.style.height = (layero.height() - layero.find('.layui-layer-title').outerHeight() - layero.find('.log-controls').outerHeight()) + 'px';
-
                 let logLines = [];
 
                 function updateLogDisplay() {
-                    logContainer.textContent = logLines.join('\n');
+                    const filteredLines = filterLogsInput.value
+                        ? logLines.filter(line => line.includes(filterLogsInput.value))
+                        : logLines;
+                    logContainer.textContent = filteredLines.join('\n');
                     if (autoScrollCheckbox.checked) {
                         logContainer.scrollTop = logContainer.scrollHeight;
                     }
@@ -430,37 +429,19 @@ layui.use(['table', 'form', 'layer'], function(){
                     updateLogDisplay();
                 };
 
-                // fetch(`/api/tasks/${id}/logs`)
-                //     .then(response => response.text())
-                //     .then(logText => {
-                //         logLines = logText.split('\n');
-                //         trimLogLines();
-                //         updateLogDisplay();
-                //     })
-                //     .catch(error => {
-                //         console.error('Error fetching logs:', error);
-                //         logLines.push('Error fetching logs. Please try again later.');
-                //         updateLogDisplay();
-                //     });
                 source = new EventSource('/api/tasks/' + id + '/logs');
                 source.onmessage = function(event) {
-                    const logLine = event.data;
-                    if (!filterLogsInput.value || logLine.includes(filterLogsInput.value)) {
-                        logLines.push(logLine);
-                        trimLogLines();
-                        updateLogDisplay();
-                    }
+                    logLines.push(event.data);
+                    trimLogLines();
+                    updateLogDisplay();
                 };
+
                 clearLogsButton.onclick = function() {
                     logLines = [];
                     updateLogDisplay();
                 };
 
-                filterLogsInput.oninput = function() {
-                    const filter = this.value;
-                    const filteredLines = logLines.filter(line => line.includes(filter));
-                    logContainer.textContent = filteredLines.join('\n');
-                };
+                filterLogsInput.oninput = updateLogDisplay;
             },
             end: function() {
                 if (source) {
