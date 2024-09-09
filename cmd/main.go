@@ -35,7 +35,7 @@ func GoprocessMain() {
 	}
 	logFile := &lumberjack.Logger{
 		Filename:   filepath.Join("logs", "goprocess.log"),
-		MaxSize:    10,
+		MaxSize:    100,
 		MaxBackups: 3,
 		MaxAge:     28,
 		Compress:   true,

@@ -71,29 +71,52 @@ func (ps *ProcessService) StartProcessById(id uint) {
 
 	startTime := time.Now()
 	retryCount := 0
+
+	// 创建日志目录和初始化日志文件
+	logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("Error creating log directory for process %d: %v", id, err)
+		ps.PM.UpdateProcessStatus(id, "error", 0)
+		websocket.BroadcastStatus(*rp)
+		return
+	}
+
+	logFile := &lumberjack.Logger{
+		Filename:   filepath.Join(logDir, "output.log"),
+		MaxSize:    100,  // 每个日志文件最大10MB
+		MaxBackups: 3,    // 最多保留3个备份
+		MaxAge:     28,   // 保留28天
+		Compress:   true, // 启用压缩
+	}
+
+	// 使用同一个 logFile 实例
+	log.SetOutput(logFile)
+
 	for retryCount < rp.RetryCount {
 		cmd := kexec.CommandString(rp.Command)
 		cmd.Dir = rp.WorkDir
 
-		logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
-		if err := os.MkdirAll(logDir, 0755); err != nil {
-			log.Printf("Error creating log directory for process %d: %v", id, err)
-			ps.PM.UpdateProcessStatus(id, "error", 0)
-			websocket.BroadcastStatus(*rp)
-			return
-		}
+		// logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
+		// if err := os.MkdirAll(logDir, 0755); err != nil {
+		// 	log.Printf("Error creating log directory for process %d: %v", id, err)
+		// 	ps.PM.UpdateProcessStatus(id, "error", 0)
+		// 	websocket.BroadcastStatus(*rp)
+		// 	return
+		// }
 
-		logFile := &lumberjack.Logger{
-			Filename:   filepath.Join(logDir, "output.log"),
-			MaxSize:    10,
-			MaxBackups: 3,
-			MaxAge:     28,
-			Compress:   true,
-		}
+		// logFile := &lumberjack.Logger{
+		// 	Filename:   filepath.Join(logDir, "output.log"),
+		// 	MaxSize:    10,
+		// 	MaxBackups: 3,
+		// 	MaxAge:     28,
+		// 	Compress:   true,
+		// }
 
-		rp.LogFile = logFile.Filename
+		// rp.LogFile = logFile.Filename
 		cmd.Stdout = logFile
 		cmd.Stderr = logFile
+
+		rp.LogFile = logFile.Filename
 
 		ps.PM.SetCommand(rp.ID, cmd)
 
@@ -114,6 +137,9 @@ func (ps *ProcessService) StartProcessById(id uint) {
 		}()
 
 		cmd.Wait()
+
+		// 手动关闭日志文件，确保日志写入并归档
+		logFile.Close()
 
 		ps.PM.RemoveCommand(rp.ID)
 
