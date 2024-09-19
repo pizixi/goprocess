@@ -90,7 +90,9 @@ func (ps *ProcessService) StartProcessById(id uint) {
 	}
 
 	// 使用同一个 logFile 实例
-	log.SetOutput(logFile)
+	// log.SetOutput(logFile)
+	// 手动关闭日志文件，确保日志写入并归档
+	defer logFile.Close()
 
 	for retryCount < rp.RetryCount {
 		cmd := kexec.CommandString(rp.Command)
@@ -137,9 +139,6 @@ func (ps *ProcessService) StartProcessById(id uint) {
 		}()
 
 		cmd.Wait()
-
-		// 手动关闭日志文件，确保日志写入并归档
-		logFile.Close()
 
 		ps.PM.RemoveCommand(rp.ID)
 

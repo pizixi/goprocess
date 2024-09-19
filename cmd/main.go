@@ -43,6 +43,7 @@ func GoprocessMain() {
 
 	// 重定向标准输出到日志文件
 	log.SetOutput(logFile)
+	defer logFile.Close()
 
 	pm := models.NewProcessManager(db)
 	PS = services.NewProcessService(pm)

@@ -101,7 +101,9 @@ func ExecuteTask(task *models.Task) {
 		Compress:   true,
 	}
 	// 使用同一个 logFile 实例
-	log.SetOutput(logFile)
+	// log.SetOutput(logFile)
+	// 手动关闭日志文件，确保日志写入并归档
+	defer logFile.Close()
 
 	// 创建一个带有超时的 context
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(task.Timeout)*time.Second)
@@ -126,8 +128,8 @@ func ExecuteTask(task *models.Task) {
 		return
 	}
 
-	// fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
-	log.Printf("---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
+	// log.Printf("---任务ID: %d 任务名: %s 开始: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
@@ -158,10 +160,9 @@ func ExecuteTask(task *models.Task) {
 		}
 	}
 
-	// fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
-	log.Printf("---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
-	// 手动关闭日志文件，确保日志写入并归档
-	logFile.Close()
+	fmt.Fprintf(logFile, "---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
+	// log.Printf("---任务ID: %d 任务名: %s 结束: %s---\n", task.ID, task.Name, time.Now().Format("2006-01-02 15:04:05"))
+
 }
 
 // // killProcessGroup 杀死指定 PID 的进程及其所有子进程
