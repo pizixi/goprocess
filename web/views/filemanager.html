@@ -312,7 +312,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>文件管理</h1>
+            <h1>文件管理系统</h1>
             <div style="display: flex; gap: 1rem;">
                 <button class="btn upload-btn" onclick="document.getElementById('fileInput').click()">
                     <i class="fas fa-upload"></i>
@@ -329,7 +329,7 @@
         <div class="file-container">
             <div class="breadcrumb-container">
                 <div class="breadcrumb">
-                    <span onclick="navigateToPath('/')" style="cursor: pointer;">根目录</span> /
+                    <!-- <span onclick="navigateToPath('/')" style="cursor: pointer;">根目录</span> / -->
                     <span id="currentPath"></span>
                 </div>
             </div>
@@ -359,7 +359,7 @@
     </div>
 
     <script>
-        let currentPath = '/';
+        let currentPath = '';
 
         // 初始化页面
         window.onload = () => {
@@ -375,15 +375,33 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                if (!Array.isArray(data)) {
-                    throw new Error('Invalid data format');
+                if (path === '') {
+                    // 显示根目录（盘符列表）
+                    displayRootDrives(data);
+                } else {
+                    // 显示文件和文件夹
+                    displayFiles(data);
                 }
-                displayFiles(data);
                 updateBreadcrumb(path);
             } catch (error) {
                 console.error('Error loading files:', error);
                 alert('加载文件列表失败: ' + error.message);
             }
+        }
+
+        // 显示根目录（盘符列表）
+        function displayRootDrives(drives) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+
+            drives.forEach(drive => {
+                const item = createFileItem({
+                    name: drive,
+                    isDirectory: true,
+                    special: false
+                });
+                fileList.appendChild(item);
+            });
         }
 
         // 显示文件列表
@@ -442,7 +460,7 @@
             if (file.special) {
                 item.onclick = () => navigateUp();
             } else if (file.isDirectory) {
-                item.onclick = () => navigateToPath(`${currentPath}${file.name}/`.replace(/\/+/g, '/'));
+                item.onclick = () => navigateToPath(currentPath ? `${currentPath}/${file.name}` : file.name);
                 
                 const openBtn = createActionButton('fa-folder-open', '打开');
                 actions.appendChild(openBtn);
@@ -483,24 +501,38 @@
 
         // 导航到指定路径
         function navigateToPath(path) {
-            currentPath = path;
-            loadFileList(path);
+            currentPath = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
+            loadFileList(currentPath);
         }
 
         // 返回上级目录
         function navigateUp() {
-            const newPath = currentPath.split('/').slice(0, -2).join('/') + '/';
+            if (currentPath === '') {
+                return; // 已经在根目录，无法再向上
+            }
+            const parts = currentPath.split('/');
+            parts.pop();
+            const newPath = parts.join('/');
             navigateToPath(newPath);
         }
 
         // 更新面包屑导航
         function updateBreadcrumb(path) {
             const currentPathElement = document.getElementById('currentPath');
-            currentPathElement.innerHTML = path.split('/')
-                .filter(p => p)
+            
+            if (path === '') {
+                currentPathElement.innerHTML = '根目录';
+                return;
+            }
+            
+            // 清理路径，移除多余的斜杠
+            path = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '');
+            
+            const parts = path.split('/');
+            currentPathElement.innerHTML = parts
                 .map((part, index, array) => {
-                    const path = '/' + array.slice(0, index + 1).join('/') + '/';
-                    return `<span onclick="navigateToPath('${path}')">${part}</span>`;
+                    const currentPath = array.slice(0, index + 1).join('/');
+                    return `<span onclick="navigateToPath('${currentPath}')">${part}</span>`;
                 })
                 .join(' / ');
         }
@@ -552,7 +584,7 @@
 
         // 下载文件
         function downloadFile(filename) {
-            const path = `${currentPath}${filename}`.replace(/\/+/g, '/');
+            const path = currentPath ? `${currentPath}/${filename}` : filename;
             window.location.href = `/api/filemanager/download?path=${encodeURIComponent(path)}`;
         }
 
@@ -562,7 +594,7 @@
                 return;
             }
 
-            const path = `${currentPath}${name}`.replace(/\/+/g, '/');
+            const path = currentPath ? `${currentPath}/${name}` : name;
             try {
                 const response = await fetch(`/api/filemanager/delete?path=${encodeURIComponent(path)}`, {
                     method: 'DELETE'

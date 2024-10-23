@@ -4,7 +4,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -20,39 +22,45 @@ type FileInfo struct {
 
 // Config 配置信息
 type Config struct {
-	RootPath string // 文件存储根路径
+	RootPaths []string // 文件存储根路径列表
 }
 
 var fileManagerConfig Config
 
 func init() {
-	// 获取当前工作目录
-	currentDir, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-
 	fileManagerConfig = Config{
-		RootPath: currentDir,
+		RootPaths: getRootPaths(),
 	}
+}
+
+// ensureDir 确保目录存在
+func ensureDir(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0755)
+	}
+	return nil
 }
 
 // ListFiles 列出指定路径下的所有文件和目录
 func ListFiles(c echo.Context) error {
 	requestPath := c.QueryParam("path")
 	if requestPath == "" {
-		requestPath = "/"
-	}
-	if !strings.HasPrefix(requestPath, "/") {
-		requestPath = "/" + requestPath
+		// 返回根目录列表
+		return c.JSON(http.StatusOK, fileManagerConfig.RootPaths)
 	}
 
-	fullPath := filepath.Join(fileManagerConfig.RootPath, filepath.Clean(requestPath))
+	// 使用filepath.Clean来规范化路径，去除多余的斜杠
+	requestPath = filepath.Clean(requestPath)
 
-	if !strings.HasPrefix(filepath.Clean(fullPath), fileManagerConfig.RootPath) {
-		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
-	}
+	fullPath := requestPath
 
+	// // 确保路径在允许的范围内
+	// if !isPathAllowed(fullPath) {
+	// 	return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
+	// }
+
+	// fullpath 中:.中的.改成/
+	fullPath = strings.Replace(fullPath, ":.", ":/", -1)
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -79,19 +87,22 @@ func ListFiles(c echo.Context) error {
 // UploadFile 处理文件上传
 func UploadFile(c echo.Context) error {
 	uploadPath := c.FormValue("path")
-	if !strings.HasPrefix(uploadPath, "/") {
-		uploadPath = "/" + uploadPath
-	}
+	uploadPath = filepath.Clean(uploadPath) // 使用filepath.Clean规范化路径
 
 	file, err := c.FormFile("file")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	fullPath := filepath.Join(fileManagerConfig.RootPath, filepath.Clean(uploadPath), file.Filename)
+	fullPath := filepath.Join(uploadPath, file.Filename)
 
-	if !strings.HasPrefix(filepath.Clean(fullPath), fileManagerConfig.RootPath) {
+	// 检查路径是否在允许的根路径内
+	if !isPathAllowed(fullPath) {
 		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
+	}
+
+	if err := ensureDir(filepath.Dir(fullPath)); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	src, err := file.Open()
@@ -118,17 +129,14 @@ func UploadFile(c echo.Context) error {
 // DownloadFile 处理文件下载
 func DownloadFile(c echo.Context) error {
 	requestPath := c.QueryParam("path")
-	if !strings.HasPrefix(requestPath, "/") {
-		requestPath = "/" + requestPath
-	}
+	requestPath = filepath.Clean(requestPath) // 使用filepath.Clean规范化路径
 
-	fullPath := filepath.Join(fileManagerConfig.RootPath, filepath.Clean(requestPath))
-
-	if !strings.HasPrefix(filepath.Clean(fullPath), fileManagerConfig.RootPath) {
+	// 检查路径是否在允许的根路径内
+	if !isPathAllowed(requestPath) {
 		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
 	}
 
-	info, err := os.Stat(fullPath)
+	info, err := os.Stat(requestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return echo.NewHTTPError(http.StatusNotFound, "File not found")
@@ -140,23 +148,20 @@ func DownloadFile(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Cannot download a directory")
 	}
 
-	return c.Attachment(fullPath, filepath.Base(fullPath))
+	return c.Attachment(requestPath, filepath.Base(requestPath))
 }
 
 // DeleteFileOrFolder 处理文件或文件夹的删除
 func DeleteFileOrFolder(c echo.Context) error {
-	path := c.QueryParam("path")
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
+	requestPath := c.QueryParam("path")
+	requestPath = filepath.Clean(requestPath) // 使用filepath.Clean规范化路径
 
-	fullPath := filepath.Join(fileManagerConfig.RootPath, filepath.Clean(path))
-
-	if !strings.HasPrefix(filepath.Clean(fullPath), fileManagerConfig.RootPath) {
+	// 检查路径是否在允许的根路径内
+	if !isPathAllowed(requestPath) {
 		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
 	}
 
-	err := os.RemoveAll(fullPath)
+	err := os.RemoveAll(requestPath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -168,15 +173,14 @@ func DeleteFileOrFolder(c echo.Context) error {
 
 // CreateFolder 处理新建文件夹
 func CreateFolder(c echo.Context) error {
-	path := c.FormValue("path")
+	parentPath := c.FormValue("path")
 	folderName := c.FormValue("name")
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
+	parentPath = filepath.Clean(parentPath) // 使用filepath.Clean规范化路径
 
-	fullPath := filepath.Join(fileManagerConfig.RootPath, filepath.Clean(path), folderName)
+	fullPath := filepath.Join(parentPath, folderName)
 
-	if !strings.HasPrefix(filepath.Clean(fullPath), fileManagerConfig.RootPath) {
+	// 检查路径是否在允许的根路径内
+	if !isPathAllowed(fullPath) {
 		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
 	}
 
@@ -188,4 +192,50 @@ func CreateFolder(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "文件夹创建成功",
 	})
+}
+
+// 新增函数：检查路径是否在允许的根路径内
+func isPathAllowed(checkPath string) bool {
+	checkPath = filepath.Clean(checkPath)
+	for _, rootPath := range fileManagerConfig.RootPaths {
+		rootPath = filepath.Clean(rootPath)
+		if runtime.GOOS == "windows" {
+			// 对于Windows，直接比较路径前缀
+			if strings.HasPrefix(strings.ToLower(checkPath), strings.ToLower(rootPath)) {
+				return true
+			}
+		} else {
+			// 对于其他系统，使用filepath.Rel
+			rel, err := filepath.Rel(rootPath, checkPath)
+			if err == nil && !strings.HasPrefix(rel, "..") && rel != ".." {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func getRootPaths() []string {
+	if runtime.GOOS == "windows" {
+		return getWindowsDrives()
+	}
+	// 对于Linux，返回当前用户的主目录
+	currentUser, err := user.Current()
+	if err != nil {
+		// 如果无法获取当前用户，则使用 /home 作为默认值
+		return []string{"/home"}
+	}
+	return []string{currentUser.HomeDir}
+}
+
+func getWindowsDrives() []string {
+	drives := []string{}
+	for _, drive := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+		f, err := os.Open(string(drive) + ":\\")
+		if err == nil {
+			drives = append(drives, string(drive)+":\\")
+			f.Close()
+		}
+	}
+	return drives
 }
