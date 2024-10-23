@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件管理</title>
+    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"> -->
+    <link href="/static/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #66BB6A; /* 更柔和的绿色 */
+            --secondary-color: #F1F8E9; /* 非常浅的绿色背景 */
+            --border-color: #C8E6C9; /* 浅绿色边框 */
+            --text-color: #33691E; /* 深绿色文字 */
+            --hover-color: #4CAF50; /* 稍深的绿色用于悬停效果 */
+            --background-color: #FAFAFA; /* 更浅的背景色 */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #A5D6A7, #66BB6A); /* 更柔和的绿色渐变 */
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .upload-btn {
+            background: #FFD54F; /* 更柔和的黄色上传按钮 */
+            color: #5D4037; /* 深棕色文字以增加对比度 */
+        }
+
+        .upload-btn:hover {
+            background: #FFCA28; /* 稍深的黄色悬停效果 */
+        }
+
+        .create-folder-btn {
+            background: #42A5F5; /* 更柔和的蓝色新建文件夹按钮 */
+            color: white;
+        }
+
+        .create-folder-btn:hover {
+            background: #2196F3; /* 稍深的蓝色悬停效果 */
+        }
+
+        .file-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .breadcrumb-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .breadcrumb {
+            font-size: 1rem;
+        }
+
+        .breadcrumb span {
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .breadcrumb span:hover {
+            color: var(--hover-color);
+        }
+
+        .file-list {
+            padding: 1rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: #f8f9fa;
+        }
+
+        .file-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            color: var(--primary-color);
+        }
+
+        .file-icon.folder {
+            color: #FFA000; /* 更柔和的文件夹图标颜色 */
+        }
+
+        .file-name {
+            flex: 1;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .file-size {
+            margin-right: 1rem;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #95a5a6;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--secondary-color);
+            color: var(--primary-color);
+        }
+
+        .upload-progress {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .progress-bar {
+            width: 250px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 2rem;
+            border: 1px solid #888;
+            width: 350px;
+            border-radius: 15px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 0.8rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .modal-actions button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .modal-actions button:first-child {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .modal-actions button:first-child:hover {
+            background: var(--hover-color);
+        }
+
+        .modal-actions button:last-child {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .modal-actions button:last-child:hover {
+            background: #7f8c8d;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 1rem auto;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .file-item {
+                flex-wrap: wrap;
+            }
+
+            .file-actions {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .file-item {
+                flex: 0 0 calc(50% - 0.5rem);
+                max-width: calc(50% - 0.5rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>文件管理</h1>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn upload-btn" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-upload"></i>
+                    上传文件
+                </button>
+                <button class="btn create-folder-btn" onclick="showCreateFolderDialog()">
+                    <i class="fas fa-folder-plus"></i>
+                    新建文件夹
+                </button>
+            </div>
+            <input type="file" id="fileInput" style="display: none" multiple>
+        </div>
+
+        <div class="file-container">
+            <div class="breadcrumb-container">
+                <div class="breadcrumb">
+                    <span onclick="navigateToPath('/')" style="cursor: pointer;">根目录</span> /
+                    <span id="currentPath"></span>
+                </div>
+            </div>
+
+            <div class="file-list" id="fileList">
+                <!-- 文件列表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <div class="upload-progress" id="uploadProgress">
+        <div>正在上传: <span id="uploadFileName"></span></div>
+        <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+        </div>
+    </div>
+
+    <div id="createFolderDialog" class="modal">
+        <div class="modal-content">
+            <h2>新建文件夹</h2>
+            <input type="text" id="folderName" placeholder="输入文件夹名称">
+            <div class="modal-actions">
+                <button onclick="createFolder()">创建</button>
+                <button onclick="closeCreateFolderDialog()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = '/';
+
+        // 初始化页面
+        window.onload = () => {
+            loadFileList(currentPath);
+            setupFileUpload();
+        };
+
+        // 加载文件列表
+        async function loadFileList(path) {
+            try {
+                const response = await fetch(`/api/filemanager/files?path=${encodeURIComponent(path)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid data format');
+                }
+                displayFiles(data);
+                updateBreadcrumb(path);
+            } catch (error) {
+                console.error('Error loading files:', error);
+                alert('加载文件列表失败: ' + error.message);
+            }
+        }
+
+        // 显示文件列表
+        function displayFiles(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+
+            if (currentPath !== '/') {
+                const backItem = createFileItem({
+                    name: '..',
+                    isDirectory: true,
+                    special: true
+                });
+                fileList.appendChild(backItem);
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            files.filter(f => f.isDirectory)
+                .forEach(file => {
+                    fragment.appendChild(createFileItem(file));
+                });
+
+            files.filter(f => !f.isDirectory)
+                .forEach(file => {
+                    fragment.appendChild(createFileItem(file));
+                });
+
+            fileList.appendChild(fragment);
+        }
+
+        // 创建文件项目
+        function createFileItem(file) {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+
+            const icon = document.createElement('i');
+            icon.className = `file-icon fas ${file.isDirectory ? 'fa-folder folder' : 'fa-file'}`;
+
+            const name = document.createElement('div');
+            name.className = 'file-name';
+            name.textContent = file.name;
+
+            const size = document.createElement('div'); // 添加文件大小显示
+            size.className = 'file-size';
+            size.textContent = formatFileSize(file.size); // 使用格式化函数
+
+            const actions = document.createElement('div');
+            actions.className = 'file-actions';
+
+            item.appendChild(icon);
+            item.appendChild(name);
+            item.appendChild(size); // 将文件大小添加到文件项中
+            item.appendChild(actions);
+
+            if (file.special) {
+                item.onclick = () => navigateUp();
+            } else if (file.isDirectory) {
+                item.onclick = () => navigateToPath(`${currentPath}${file.name}/`.replace(/\/+/g, '/'));
+                
+                const openBtn = createActionButton('fa-folder-open', '打开');
+                actions.appendChild(openBtn);
+
+                const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteFileOrFolder(file.name, true);
+                };
+                actions.appendChild(deleteBtn);
+            } else {
+                const downloadBtn = createActionButton('fa-download', '下载');
+                downloadBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    downloadFile(file.name);
+                };
+                actions.appendChild(downloadBtn);
+
+                const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteFileOrFolder(file.name, false);
+                };
+                actions.appendChild(deleteBtn);
+            }
+
+            return item;
+        }
+
+        // 创建操作按钮
+        function createActionButton(icon, title) {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.title = title;
+            btn.innerHTML = `<i class="fas ${icon}"></i>`;
+            return btn;
+        }
+
+        // 导航到指定路径
+        function navigateToPath(path) {
+            currentPath = path;
+            loadFileList(path);
+        }
+
+        // 返回上级目录
+        function navigateUp() {
+            const newPath = currentPath.split('/').slice(0, -2).join('/') + '/';
+            navigateToPath(newPath);
+        }
+
+        // 更新面包屑导航
+        function updateBreadcrumb(path) {
+            const currentPathElement = document.getElementById('currentPath');
+            currentPathElement.innerHTML = path.split('/')
+                .filter(p => p)
+                .map((part, index, array) => {
+                    const path = '/' + array.slice(0, index + 1).join('/') + '/';
+                    return `<span onclick="navigateToPath('${path}')">${part}</span>`;
+                })
+                .join(' / ');
+        }
+
+        // 设置文件上传
+        function setupFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.onchange = async (e) => {
+                const files = e.target.files;
+                for (let file of files) {
+                    await uploadFile(file);
+                }
+                loadFileList(currentPath);
+            };
+        }
+
+        // 上传文件
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', currentPath);
+
+            const progressBar = document.getElementById('progressBar');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadFileName = document.getElementById('uploadFileName');
+
+            uploadProgress.style.display = 'block';
+            uploadFileName.textContent = file.name;
+
+            try {
+                const response = await fetch('/api/filemanager/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+                
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 1000);
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('文件上传失败');
+                uploadProgress.style.display = 'none';
+            }
+        }
+
+        // 下载文件
+        function downloadFile(filename) {
+            const path = `${currentPath}${filename}`.replace(/\/+/g, '/');
+            window.location.href = `/api/filemanager/download?path=${encodeURIComponent(path)}`;
+        }
+
+        // 删除文件或文件夹
+        async function deleteFileOrFolder(name, isFolder) {
+            if (!confirm(`确定要删除${isFolder ? '文件夹' : '文件'} "${name}" 吗？`)) {
+                return;
+            }
+
+            const path = `${currentPath}${name}`.replace(/\/+/g, '/');
+            try {
+                const response = await fetch(`/api/filemanager/delete?path=${encodeURIComponent(path)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('删除失败');
+
+                loadFileList(currentPath);
+            } catch (error) {
+                console.error('删除文件/文件夹时出错:', error);
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 显示新建文件夹对话框
+        function showCreateFolderDialog() {
+            document.getElementById('createFolderDialog').style.display = 'block';
+        }
+
+        // 关闭新建文件夹对话框
+        function closeCreateFolderDialog() {
+            document.getElementById('createFolderDialog').style.display = 'none';
+            document.getElementById('folderName').value = '';
+        }
+
+        // 创建新文件夹
+        async function createFolder() {
+            const folderName = document.getElementById('folderName').value.trim();
+            if (!folderName) {
+                alert('请输入文件夹名称');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('path', currentPath);
+            formData.append('name', folderName);
+
+            try {
+                const response = await fetch('/api/filemanager/createFolder', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('创建文件夹失败');
+
+                closeCreateFolderDialog();
+                loadFileList(currentPath);
+            } catch (error) {
+                console.error('创建文件夹时出错:', error);
+                alert('创建文件夹失败: ' + error.message);
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(size) {
+            if (size === undefined || size === null) return '';
+            if (size >= 1024 ** 3) {
+                return (size / (1024 ** 3)).toFixed(2) + ' GB';
+            } else if (size >= 1024 ** 2) {
+                return (size / (1024 ** 2)).toFixed(2) + ' MB';
+            } else if (size >= 1024) {
+                return (size / 1024).toFixed(2) + ' KB';
+            } else {
+                return size + ' Bytes';
+            }
+        }
+    </script>
+</body>
+</html>

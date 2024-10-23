@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebShell 终端</title>
+    <style>
+        body, html {
+            font-family: 'Fira Code', 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #header {
+            background-color: #2d2d2d;
+            color: #61afef;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border-bottom: 1px solid #3e3e3e;
+            text-align: center;
+        }
+        #terminal-container {
+            height: calc(100% - 41px);
+            overflow: hidden;
+        }
+        #terminal {
+            height: 100%;
+            padding: 20px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        #input-line {
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+        }
+        #prompt {
+            color: #98c379;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        #command-input {
+            flex-grow: 1;
+            background-color: transparent;
+            border: none;
+            color: #d4d4d4;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            caret-color: #61afef;
+        }
+        .output-line {
+            margin: 4px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .command-line {
+            color: #61afef;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4d4d4d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">WebShell 终端</div>
+    <div id="terminal-container">
+        <div id="terminal">
+            <div id="output"></div>
+            <div id="input-line">
+                <span id="prompt">$</span>
+                <input type="text" id="command-input" autofocus>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const output = document.getElementById('output');
+        const commandInput = document.getElementById('command-input');
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        function appendToTerminal(text, isCommand = false) {
+            const line = document.createElement('div');
+            line.className = isCommand ? 'output-line command-line' : 'output-line';
+            line.textContent = isCommand ? `$ ${text}` : text;
+            output.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function executeCommand() {
+            const command = commandInput.value;
+            if (!command) return;
+
+            appendToTerminal(command, true);
+            commandInput.value = '';
+            commandHistory.push(command);
+            historyIndex = commandHistory.length;
+
+            fetch('/api/webshell', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `command=${encodeURIComponent(command)}`,
+            })
+            .then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                function readStream() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            return;
+                        }
+                        const text = decoder.decode(value);
+                        appendToTerminal(text);
+                        readStream();
+                    });
+                }
+
+                readStream();
+            })
+            .catch(error => {
+                appendToTerminal(`错误: ${error.message}`);
+            });
+        }
+
+        commandInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                executeCommand();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = commandHistory[historyIndex];
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    commandInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    commandInput.value = '';
+                }
+            }
+        });
+
+        // 初始聚焦到输入框
+        commandInput.focus();
+
+        // 保持输入框聚焦
+        terminal.addEventListener('click', (event) => {
+            if (event.target !== commandInput) {
+                event.preventDefault();
+            }
+        });
+
+        // 阻止默认的右键菜单
+        terminal.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+        });
+
+        document.addEventListener('mouseup', (event) => {
+            if (event.button === 2) { // 右键点击
+                const selectedText = window.getSelection().toString();
+                if (selectedText) {
+                    commandInput.value += selectedText;
+                    commandInput.focus();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -84,6 +84,7 @@ func GoprocessMain() {
 	// 使用自定义配置的日志中间件
 	e.Use(middleware.LoggerWithConfig(loggerConfig))
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	// 渲染嵌入的HTML文件
 	renderer := &TemplateRenderer{
@@ -106,6 +107,11 @@ func GoprocessMain() {
 	if config.Conf.HTTPAuth.Enabled {
 		// 受保护的路由
 		e.GET("/", handlers.HomeHandler, handlers.AuthMiddleware)
+
+		// 首页
+		e.GET("/home.html", handlers.SystemInfoHandler, handlers.AuthMiddleware)
+		e.GET("/api/system-info", handlers.GetSystemInfoHandler, handlers.AuthMiddleware)
+
 		// 进程管理
 		e.GET("/processes.html", handlers.ProcessesHandler, handlers.AuthMiddleware)
 		e.GET("/api/processes", processHandler.ListProcessesHandler, handlers.AuthMiddleware)
@@ -128,12 +134,27 @@ func GoprocessMain() {
 		e.POST("/api/tasks/:id/run", taskHandler.RunTaskHandler, handlers.AuthMiddleware)
 		e.GET("/api/tasks/:id/logs", taskHandler.GetTaskLogsHandler, handlers.AuthMiddleware)
 
+		// webshell
+		e.GET("/webshell.html", handlers.WebshellHandler, handlers.AuthMiddleware)
+		e.POST("/api/webshell", handlers.WebshellExecuteCommand, handlers.AuthMiddleware)
+
+		// 文件管理
+		e.GET("/filemanager.html", handlers.FileManagerHandler, handlers.AuthMiddleware)
+		e.GET("/api/filemanager/files", handlers.ListFiles, handlers.AuthMiddleware)
+		e.POST("/api/filemanager/upload", handlers.UploadFile, handlers.AuthMiddleware)
+		e.GET("/api/filemanager/download", handlers.DownloadFile, handlers.AuthMiddleware)
+		e.DELETE("/api/filemanager/delete", handlers.DeleteFileOrFolder, handlers.AuthMiddleware)
+		e.POST("/api/filemanager/createFolder", handlers.CreateFolder, handlers.AuthMiddleware)
+
 		// 系统日志
 		e.GET("/serverlogs.html", handlers.ServerLogsHandler, handlers.AuthMiddleware)
 		e.GET("/api/serverlogs", handlers.GetServerLogsHandler, handlers.AuthMiddleware)
 	} else {
 		// 不受保护的路由
 		e.GET("/", handlers.HomeHandler)
+		// 首页
+		e.GET("/home.html", handlers.SystemInfoHandler)
+		e.GET("/api/system-info", handlers.GetSystemInfoHandler)
 		// 进程管理
 		e.GET("/processes.html", handlers.ProcessesHandler)
 		e.GET("/api/processes", processHandler.ListProcessesHandler)
@@ -155,6 +176,18 @@ func GoprocessMain() {
 		e.POST("/api/tasks/:id/toggle", taskHandler.ToggleTaskStatusHandler)
 		e.POST("/api/tasks/:id/run", taskHandler.RunTaskHandler)
 		e.GET("/api/tasks/:id/logs", taskHandler.GetTaskLogsHandler)
+
+		// webshell
+		e.GET("/webshell.html", handlers.WebshellHandler)
+		e.POST("/api/webshell", handlers.WebshellExecuteCommand)
+
+		// 文件管理
+		e.GET("/filemanager.html", handlers.FileManagerHandler)
+		e.GET("/api/filemanager/files", handlers.ListFiles)
+		e.POST("/api/filemanager/upload", handlers.UploadFile)
+		e.GET("/api/filemanager/download", handlers.DownloadFile)
+		e.DELETE("/api/filemanager/delete", handlers.DeleteFileOrFolder)
+		e.POST("/api/filemanager/createFolder", handlers.CreateFolder)
 
 		// 系统日志
 		e.GET("/serverlogs.html", handlers.ServerLogsHandler)

@@ -17,6 +17,15 @@ func LoginHandler(c echo.Context) error {
 func HomeHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "index.html", nil)
 }
+func SystemInfoHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "home.html", nil)
+}
+func WebshellHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "webshell.html", nil)
+}
+func FileManagerHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "filemanager.html", nil)
+}
 func ProcessesHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "processes.html", nil)
 }
