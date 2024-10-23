@@ -24,14 +24,14 @@ goprocess.exe uninstall
 
 ![screenshot](images/screenshot1.png)
 
-![screenshot](images/screenshot2.png)
+![screenshot](images/screenshot2.jpg)
 
-![screenshot](images/screenshot3.png)
+![screenshot](images/screenshot3.jpg)
 
-![screenshot](images/screenshot4.png)
+![screenshot](images/screenshot4.jpg)
 
-![screenshot](images/screenshot5.png)
+![screenshot](images/screenshot5.jpg)
 
-![screenshot](images/screenshot6.png)
+![screenshot](images/screenshot6.jpg)
 
-![screenshot](images/screenshot7.png)
+![screenshot](images/screenshot7.jpg)
