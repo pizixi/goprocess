@@ -116,24 +116,26 @@
         }
 
         .file-list {
-            padding: 1rem;
+            padding: 0.5rem;
+            background: linear-gradient(to bottom, #ffffff, #f9f9f9);
         }
 
         .file-item {
             display: flex;
             align-items: center;
-            padding: 0.8rem;
+            padding: 0.6rem; /* 减小内边距 */
             border-bottom: 1px solid var(--border-color);
             transition: all 0.3s ease;
         }
 
         .file-item:hover {
-            background: #f8f9fa;
+            transform: translateX(5px);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
         }
 
         .file-icon {
-            font-size: 1.5rem;
-            margin-right: 1rem;
+            font-size: 1.2rem; /* 稍微减小图标大小 */
+            margin-right: 0.8rem; /* 减小右边距 */
             color: var(--primary-color);
         }
 
@@ -143,19 +145,22 @@
 
         .file-name {
             flex: 1;
-            font-size: 1rem;
+            font-size: 0.95rem; /* 稍微减小字体大小 */
             font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .file-size {
-            margin-right: 1rem;
+            margin-right: 0.8rem;
             color: #7f8c8d;
-            font-size: 0.9rem;
+            font-size: 0.85rem; /* 减小字体大小 */
         }
 
         .file-actions {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.3rem; /* 减小按钮之间的间距 */
         }
 
         .action-btn {
@@ -163,7 +168,7 @@
             border: none;
             color: #95a5a6;
             cursor: pointer;
-            padding: 0.3rem;
+            padding: 0.2rem; /* 减小按钮内边距 */
             border-radius: 4px;
             transition: all 0.3s ease;
         }
@@ -291,21 +296,87 @@
             }
 
             .file-item {
-                flex-wrap: wrap;
+                flex-wrap: nowrap; /* 保持在一行 */
+                justify-content: space-between;
             }
 
             .file-actions {
-                width: 100%;
-                justify-content: flex-end;
-                margin-top: 1rem;
+                flex-shrink: 0;
             }
+
+            /* 在小屏幕上隐藏文件大小 */
+            /*.file-size {
+                display: none; 
+            } */
         }
 
         @media (max-width: 480px) {
             .file-item {
-                flex: 0 0 calc(50% - 0.5rem);
-                max-width: calc(50% - 0.5rem);
+                padding: 0.5rem; /* 进一步减小内边距 */
             }
+
+            .file-icon {
+                font-size: 1rem;
+                margin-right: 0.5rem;
+            }
+
+            .file-name {
+                font-size: 0.9rem;
+            }
+
+            .action-btn {
+                padding: 0.15rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* 添加悬停效果以显示完整文件名 */
+        .file-name:hover {
+            white-space: normal;
+            word-break: break-all;
+            position: relative;
+            z-index: 1;
+            background-color: var(--secondary-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            padding: 0.2rem;
+        }
+
+        /* 添加一些额外的美化 */
+        .file-list {
+            padding: 0.5rem;
+            background: linear-gradient(to bottom, #ffffff, #f9f9f9);
+        }
+
+        .file-item:hover {
+            transform: translateX(5px);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .action-btn {
+            transition: transform 0.2s ease;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* 添加滚动条样式 */
+        .file-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .file-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .file-list::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .file-list::-webkit-scrollbar-thumb:hover {
+            background: var(--hover-color);
         }
     </style>
 </head>
@@ -439,8 +510,44 @@
             item.className = 'file-item';
 
             const icon = document.createElement('i');
-            icon.className = `file-icon fas ${file.isDirectory ? 'fa-folder folder' : 'fa-file'}`;
-
+            // icon.className = `file-icon fas ${file.isDirectory ? 'fa-folder folder' : 'fa-file'}`;
+            if (file.isDirectory) {
+                icon.className = 'file-icon fas fa-folder folder';
+            } else {
+                icon.className = 'file-icon fas fa-file';
+                // 根据文件扩展名添加特定图标
+                const extension = file.name.split('.').pop().toLowerCase();
+                switch (extension) {
+                    case 'jpg': case 'jpeg': case 'png': case 'gif':
+                        icon.className += ' fa-file-image';
+                        break;
+                    case 'mp3': case 'wav':
+                        icon.className += ' fa-file-audio';
+                        break;
+                    case 'mp4': case 'avi': case 'mov':
+                        icon.className += ' fa-file-video';
+                        break;
+                    case 'pdf':
+                        icon.className += ' fa-file-pdf';
+                        break;
+                    case 'doc': case 'docx':
+                        icon.className += ' fa-file-word';
+                        break;
+                    case 'xls': case 'xlsx':
+                        icon.className += ' fa-file-excel';
+                        break;
+                    case 'ppt': case 'pptx':
+                        icon.className += ' fa-file-powerpoint';
+                        break;
+                    case 'zip': case 'rar': case '7z':
+                        icon.className += ' fa-file-archive';
+                        break;
+                    case 'js': case 'html': case 'css': case 'py': case 'java':
+                        icon.className += ' fa-file-code';
+                        break;
+                    // 可以根据需要添加更多文件类型
+                }
+            }            
             const name = document.createElement('div');
             name.className = 'file-name';
             name.textContent = file.name;
