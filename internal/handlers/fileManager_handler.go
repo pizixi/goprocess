@@ -53,14 +53,14 @@ func ListFiles(c echo.Context) error {
 	requestPath = filepath.Clean(requestPath)
 
 	fullPath := requestPath
-
-	// // 确保路径在允许的范围内
-	// if !isPathAllowed(fullPath) {
-	// 	return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
-	// }
-
 	// fullpath 中:.中的.改成/
 	fullPath = strings.Replace(fullPath, ":.", ":/", -1)
+
+	// 确保路径在允许的范围内
+	if !isPathAllowed(fullPath) {
+		return echo.NewHTTPError(http.StatusForbidden, "访问被拒绝")
+	}
+
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -95,6 +95,9 @@ func UploadFile(c echo.Context) error {
 	}
 
 	fullPath := filepath.Join(uploadPath, file.Filename)
+	if strings.Contains(fullPath, ":") && !strings.HasSuffix(fullPath, ":/") {
+		fullPath = strings.Replace(fullPath, ":", ":/", -1)
+	}
 
 	// 检查路径是否在允许的根路径内
 	if !isPathAllowed(fullPath) {
@@ -178,6 +181,9 @@ func CreateFolder(c echo.Context) error {
 	parentPath = filepath.Clean(parentPath) // 使用filepath.Clean规范化路径
 
 	fullPath := filepath.Join(parentPath, folderName)
+	if strings.Contains(fullPath, ":") && !strings.HasSuffix(fullPath, ":/") {
+		fullPath = strings.Replace(fullPath, ":", ":/", -1)
+	}
 
 	// 检查路径是否在允许的根路径内
 	if !isPathAllowed(fullPath) {
@@ -196,6 +202,7 @@ func CreateFolder(c echo.Context) error {
 
 // 新增函数：检查路径是否在允许的根路径内
 func isPathAllowed(checkPath string) bool {
+	// fmt.Println("Checking path:", checkPath)
 	checkPath = filepath.Clean(checkPath)
 	for _, rootPath := range fileManagerConfig.RootPaths {
 		rootPath = filepath.Clean(rootPath)
@@ -225,7 +232,7 @@ func getRootPaths() []string {
 		// 如果无法获取当前用户，则使用 /home 作为默认值
 		return []string{"/home"}
 	}
-	return []string{currentUser.HomeDir}
+	return []string{currentUser.HomeDir, "/"}
 }
 
 func getWindowsDrives() []string {

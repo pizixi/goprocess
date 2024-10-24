@@ -465,12 +465,15 @@
                 const openBtn = createActionButton('fa-folder-open', '打开');
                 actions.appendChild(openBtn);
 
-                const deleteBtn = createActionButton('fa-trash-alt', '删除');
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteFileOrFolder(file.name, true);
-                };
-                actions.appendChild(deleteBtn);
+                // 仅当不在根目录时显示删除按钮
+                if (currentPath !== '') {
+                    const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteFileOrFolder(file.name, true);
+                    };
+                    actions.appendChild(deleteBtn);
+                }
             } else {
                 const downloadBtn = createActionButton('fa-download', '下载');
                 downloadBtn.onclick = (e) => {
@@ -478,13 +481,15 @@
                     downloadFile(file.name);
                 };
                 actions.appendChild(downloadBtn);
-
-                const deleteBtn = createActionButton('fa-trash-alt', '删除');
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteFileOrFolder(file.name, false);
-                };
-                actions.appendChild(deleteBtn);
+                // 仅当不在根目录时显示删除按钮
+                if (currentPath !== '') {
+                    const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteFileOrFolder(file.name, false);
+                    };
+                    actions.appendChild(deleteBtn);
+                }
             }
 
             return item;
@@ -501,7 +506,8 @@
 
         // 导航到指定路径
         function navigateToPath(path) {
-            currentPath = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
+            // currentPath = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
+            currentPath = path === '/' ? '/' : path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
             loadFileList(currentPath);
         }
 
@@ -526,7 +532,8 @@
             }
             
             // 清理路径，移除多余的斜杠
-            path = path.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '');
+            // path = path.replace(/\\/g, '/').replace(/\/(?=\/)/g, '').replace(/\/(?![^/])/g, '');
+            path === '/' ? '/' : path.replace(/\\/g, '/').replace(/\/(?=\/)/g, '').replace(/\/(?![^/])/g, '');
             
             const parts = path.split('/');
             currentPathElement.innerHTML = parts
