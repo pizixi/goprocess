@@ -409,7 +409,7 @@
             const fileList = document.getElementById('fileList');
             fileList.innerHTML = '';
 
-            if (currentPath !== '/') {
+            if (currentPath !== '') {
                 const backItem = createFileItem({
                     name: '..',
                     isDirectory: true,
