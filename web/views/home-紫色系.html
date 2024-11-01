@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统监控仪表板</title>
+    <!-- <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> -->
+    <script src="/static/charjs/tailwindcss3.4.5.js"></script>
+    <script src="/static/charjs/chart.js"></script>
+    <script src="/static/charjs/apexcharts.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f6ff;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6c5ce7 0%, #a78bfa 100%);
+        }
+        .card {
+            transition: all 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(108, 92, 231, 0.15);
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-indigo-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- <h1 class="text-3xl font-bold text-center mb-8 text-white gradient-bg p-4 rounded-xl shadow-lg"style=" margin: 20px 0; text-align: center; text-shadow: #888888 0.08em 0.08em 0.16em">系统监控仪表板</h1> -->
+        
+        <!-- 系统信息 -->
+        <div class="card rounded-xl shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-3 text-indigo-700">系统信息</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-gray-700">主机名：<span id="hostname" class="font-semibold text-indigo-600">--</span></p>
+                    <p class="text-gray-700">操作系统：<span id="os" class="font-semibold text-indigo-600">--</span></p>
+                </div>
+                <div>
+                    <p class="text-gray-700">平台：<span id="platform" class="font-semibold text-indigo-600">--</span></p>
+                    <p class="text-gray-700">运行时间：<span id="uptime" class="font-semibold text-indigo-600">--</span></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card rounded-xl shadow-md p-4 border-t-4 border-blue-600">
+                <h3 class="text-md font-semibold mb-3 text-gray-700">CPU 使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="cpuInfo">-- 核心 | --</div>
+                <div id="cpuGauge"></div>
+            </div>
+            <div class="card rounded-xl shadow-md p-4 border-t-4 border-purple-600">
+                <h3 class="text-md font-semibold mb-3 text-gray-700">内存使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="memoryInfo">已用: -- GB / 总计: -- GB</div>
+                <div id="memoryGauge"></div>
+            </div>
+            <div class="card rounded-xl shadow-md p-4 border-t-4 border-pink-600">
+                <h3 class="text-md font-semibold mb-3 text-gray-700">磁盘使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="diskInfo">已用: -- GB / 总计: -- GB</div>
+                <div id="diskGauge"></div>
+            </div>
+            <div class="card rounded-xl shadow-md p-4 border-t-4 border-indigo-600">
+                <h3 class="text-md font-semibold mb-3 text-gray-700">网络流量</h3>
+                <div class="text-xl font-bold text-purple-600" id="networkTraffic">-- MB/s</div>
+                <div class="text-sm text-gray-500 mb-2" id="networkInfo">上传: -- MB | 下载: -- MB</div>
+                <div id="networkChart"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="card rounded-xl shadow-md p-4">
+                <h3 class="text-xl font-semibold mb-3 text-indigo-700">CPU、内存和磁盘使用率趋势</h3>
+                <canvas id="resourceChart"></canvas>
+            </div>
+            <div class="card rounded-xl shadow-md p-4">
+                <h3 class="text-xl font-semibold mb-3 text-indigo-700">磁盘详情</h3>
+                <div id="diskDetails" class="grid grid-cols-1 gap-3">
+                    <!-- 磁盘详情将在这里动态添加 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const formatBytes = (bytes, decimals = 2) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        };
+
+        const formatUptime = (seconds) => {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${days}天 ${hours}小时 ${minutes}分钟`;
+        };
+
+        let resourceChart, cpuGauge, memoryGauge, diskGauge, networkChart;
+        const cpuData = [], memoryData = [], diskData = [];
+        let lastNetworkBytes = { sent: 0, recv: 0 };
+
+        const createGauge = (elementId, label, color) => {
+            return new ApexCharts(document.querySelector(elementId), {
+                series: [0],
+                chart: {
+                    height: 180,
+                    type: 'radialBar',
+                },
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -135,
+                        endAngle: 135,
+                        hollow: {
+                            margin: 0,
+                            size: '60%',
+                            background: '#fff',
+                            image: undefined,
+                            imageOffsetX: 0,
+                            imageOffsetY: 0,
+                            position: 'front',
+                        },
+                        track: {
+                            background: '#f1f5f9',
+                            strokeWidth: '67%',
+                            margin: 0,
+                            dropShadow: {
+                                enabled: true,
+                                top: 2,
+                                left: 0,
+                                blur: 4,
+                                opacity: 0.15
+                            }
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                offsetY: -10,
+                                show: true,
+                                color: '#888',
+                                fontSize: '14px'
+                            },
+                            value: {
+                                formatter: function(val) {
+                                    return parseInt(val) + '%';
+                                },
+                                color: '#111',
+                                fontSize: '28px',
+                                show: true,
+                            }
+                        }
+                    }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: [color],
+                        inverseColors: false,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
+                },
+                stroke: {
+                    lineCap: 'round',
+                    dashArray: 0
+                },
+                labels: [label],
+            });
+        };
+
+        const createNetworkChart = () => {
+            return new ApexCharts(document.querySelector("#networkChart"), {
+                series: [{
+                    name: '上传',
+                    data: []
+                }, {
+                    name: '下载',
+                    data: []
+                }],
+                chart: {
+                    type: 'area',
+                    height: 100,
+                    sparkline: {
+                        enabled: true
+                    },
+                },
+                stroke: {
+                    curve: 'smooth'
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.9,
+                        stops: [0, 90, 100]
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                },
+                yaxis: {
+                    min: 0
+                },
+                colors: ['#818cf8', '#4f46e5']
+            });
+        };
+
+        const updateCharts = () => {
+            resourceChart.data.labels = cpuData.map((_, index) => index);
+            resourceChart.data.datasets[0].data = cpuData;
+            resourceChart.data.datasets[1].data = memoryData;
+            resourceChart.data.datasets[2].data = diskData;
+            resourceChart.update();
+
+            cpuGauge.update();
+            memoryGauge.update();
+            diskGauge.update();
+            networkChart.updateSeries([{
+                data: networkData.upload
+            }, {
+                data: networkData.download
+            }]);
+        };
+
+        const createCharts = () => {
+            const ctx = document.getElementById('resourceChart').getContext('2d');
+            resourceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CPU 使用率',
+                        data: [],
+                        borderColor: 'rgb(37, 99, 235)',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: '内存使用率',
+                        data: [],
+                        borderColor: 'rgb(147, 51, 234)',
+                        backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: '磁盘使用率',
+                        data: [],
+                        borderColor: 'rgb(219, 39, 119)',
+                        backgroundColor: 'rgba(219, 39, 119, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#6B7280',
+                            bodyColor: '#374151',
+                            borderColor: '#E5E7EB',
+                            borderWidth: 1,
+                            padding: 10,
+                            boxPadding: 4
+                        }
+                    }
+                }
+            });
+
+            cpuGauge = createGauge("#cpuGauge", "CPU", "#2563eb");
+            memoryGauge = createGauge("#memoryGauge", "内存", "#9333ea");
+            diskGauge = createGauge("#diskGauge", "磁盘", "#db2777");
+            networkChart = createNetworkChart();
+
+            cpuGauge.render();
+            memoryGauge.render();
+            diskGauge.render();
+            networkChart.render();
+        };
+
+        const networkData = {
+            upload: [],
+            download: []
+        };
+
+        const updateSystemInfo = async () => {
+            try {
+                const response = await fetch('/api/system-info');
+                const data = await response.json();
+
+                document.getElementById('cpuInfo').textContent = `${data.cpu.cores} 核心 | ${data.cpu.modelName}`;
+
+                document.getElementById('memoryInfo').textContent = `已用: ${formatBytes(data.memory.used)} / 总计: ${formatBytes(data.memory.total)}`;
+
+                const totalDiskUsed = data.disk.reduce((acc, disk) => acc + disk.used, 0);
+                const totalDiskSpace = data.disk.reduce((acc, disk) => acc + disk.total, 0);
+                const avgDiskUsage = (totalDiskUsed / totalDiskSpace) * 100;
+                document.getElementById('diskInfo').textContent = `已用: ${formatBytes(totalDiskUsed)} / 总计: ${formatBytes(totalDiskSpace)}`;
+
+                const totalBytesSent = data.network.reduce((acc, net) => acc + net.bytesSent, 0);
+                const totalBytesRecv = data.network.reduce((acc, net) => acc + net.bytesRecv, 0);
+                
+                // 计算网络速度
+                const bytesSentPerSecond = (totalBytesSent - lastNetworkBytes.sent) / 5;
+                const bytesRecvPerSecond = (totalBytesRecv - lastNetworkBytes.recv) / 5;
+                const totalBytesPerSecond = bytesSentPerSecond + bytesRecvPerSecond;
+
+                document.getElementById('networkTraffic').textContent = `${formatBytes(totalBytesPerSecond)}/s`;
+                document.getElementById('networkInfo').textContent = `上传: ${formatBytes(bytesSentPerSecond)}/s | 下载: ${formatBytes(bytesRecvPerSecond)}/s`;
+
+                // 更新上次的网络字节
+                lastNetworkBytes = { sent: totalBytesSent, recv: totalBytesRecv };
+
+                document.getElementById('hostname').textContent = data.host.hostname;
+                document.getElementById('os').textContent = data.host.os;
+                document.getElementById('platform').textContent = data.host.platform;
+                document.getElementById('uptime').textContent = formatUptime(data.host.uptime);
+
+                cpuData.push(data.cpu.usagePercent);
+                memoryData.push(data.memory.usagePercent);
+                diskData.push(avgDiskUsage);
+                if (cpuData.length > 20) cpuData.shift();
+                if (memoryData.length > 20) memoryData.shift();
+                if (diskData.length > 20) diskData.shift();
+
+                cpuGauge.updateSeries([data.cpu.usagePercent]);
+                memoryGauge.updateSeries([data.memory.usagePercent]);
+                diskGauge.updateSeries([avgDiskUsage]);
+
+                const now = new Date().getTime();
+                networkData.upload.push([now, bytesSentPerSecond]);
+                networkData.download.push([now, bytesRecvPerSecond]);
+                if (networkData.upload.length > 10) networkData.upload.shift();
+                if (networkData.download.length > 10) networkData.download.shift();
+
+                updateCharts();
+
+                // 更新磁盘详情
+                const diskDetailsContainer = document.getElementById('diskDetails');
+                diskDetailsContainer.innerHTML = ''; // 清空现有内容
+                data.disk.forEach(disk => {
+                    const usagePercent = (disk.used / disk.total) * 100;
+                    const diskElement = document.createElement('div');
+                    diskElement.className = 'bg-white p-3 rounded-lg shadow-sm';
+                    diskElement.innerHTML = `
+                        <h4 class="text-sm font-semibold mb-1 text-indigo-600">${disk.path}</h4>
+                        <div class="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>总量: ${formatBytes(disk.total)}</span>
+                            <span>已用: ${formatBytes(disk.used)}</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2">
+                            <div class="bg-indigo-500 h-2 rounded-full" style="width: ${usagePercent.toFixed(2)}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1">使用率: ${usagePercent.toFixed(2)}%</p>
+                    `;
+                    diskDetailsContainer.appendChild(diskElement);
+                });
+
+            } catch (error) {
+                console.error('Error fetching system info:', error);
+            }
+        };
+
+        createCharts();
+        updateSystemInfo();
+        setInterval(updateSystemInfo, 5000);
+    </script>
+</body>
+</html>
