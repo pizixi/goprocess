@@ -38,7 +38,7 @@
 </head>
 <body class="bg-gradient-to-br from-green-100 to-blue-100 min-h-screen">
     <div class="container mx-auto px-4 py-6">
-        <h1 class="text-3xl font-bold text-center mb-8 text-white gradient-bg p-4 rounded-xl shadow-lg"style=" margin: 20px 0; text-align: center; text-shadow: #888888 0.08em 0.08em 0.16em">系统监控仪表板</h1>
+        <!-- <h1 class="text-3xl font-bold text-center mb-8 text-white gradient-bg p-4 rounded-xl shadow-lg"style=" margin: 20px 0; text-align: center; text-shadow: #888888 0.08em 0.08em 0.16em">系统监控仪表板</h1> -->
         
         <!-- 系统信息 -->
         <div class="card rounded-xl shadow-md p-4 mb-6">
@@ -57,27 +57,24 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="card rounded-xl shadow-md p-4 border-t-4 border-blue-500">
-                <h3 class="text-md font-semibold mb-2 text-gray-700">CPU 使用率</h3>
-                <div class="text-2xl font-bold text-blue-600" id="cpuUsage">--%</div>
-                <div class="text-xs text-gray-500 mt-1" id="cpuInfo">-- 核心 | --</div>
+                <h3 class="text-md font-semibold mb-3 text-gray-700">CPU 使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="cpuInfo">-- 核心 | --</div>
                 <div id="cpuGauge"></div>
             </div>
             <div class="card rounded-xl shadow-md p-4 border-t-4 border-green-500">
-                <h3 class="text-md font-semibold mb-2 text-gray-700">内存使用率</h3>
-                <div class="text-2xl font-bold text-green-600" id="memoryUsage">--%</div>
-                <div class="text-xs text-gray-500 mt-1" id="memoryInfo">已用: -- GB / 总计: -- GB</div>
+                <h3 class="text-md font-semibold mb-3 text-gray-700">内存使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="memoryInfo">已用: -- GB / 总计: -- GB</div>
                 <div id="memoryGauge"></div>
             </div>
             <div class="card rounded-xl shadow-md p-4 border-t-4 border-yellow-500">
-                <h3 class="text-md font-semibold mb-2 text-gray-700">磁盘使用率</h3>
-                <div class="text-2xl font-bold text-yellow-600" id="diskUsage">--%</div>
-                <div class="text-xs text-gray-500 mt-1" id="diskInfo">已用: -- GB / 总计: -- GB</div>
+                <h3 class="text-md font-semibold mb-3 text-gray-700">磁盘使用率</h3>
+                <div class="text-sm text-gray-500 mb-2" id="diskInfo">已用: -- GB / 总计: -- GB</div>
                 <div id="diskGauge"></div>
             </div>
             <div class="card rounded-xl shadow-md p-4 border-t-4 border-purple-500">
-                <h3 class="text-md font-semibold mb-2 text-gray-700">网络流量</h3>
-                <div class="text-2xl font-bold text-purple-600" id="networkTraffic">-- MB/s</div>
-                <div class="text-xs text-gray-500 mt-1" id="networkInfo">上传: -- MB | 下载: -- MB</div>
+                <h3 class="text-md font-semibold mb-3 text-gray-700">网络流量</h3>
+                <div class="text-xl font-bold text-purple-600" id="networkTraffic">-- MB/s</div>
+                <div class="text-sm text-gray-500 mb-2" id="networkInfo">上传: -- MB | 下载: -- MB</div>
                 <div id="networkChart"></div>
             </div>
         </div>
@@ -121,7 +118,7 @@
             return new ApexCharts(document.querySelector(elementId), {
                 series: [0],
                 chart: {
-                    height: 200,
+                    height: 180,
                     type: 'radialBar',
                 },
                 plotOptions: {
@@ -130,7 +127,7 @@
                         endAngle: 135,
                         hollow: {
                             margin: 0,
-                            size: '70%',
+                            size: '60%',
                             background: '#fff',
                             image: undefined,
                             imageOffsetX: 0,
@@ -138,9 +135,16 @@
                             position: 'front',
                         },
                         track: {
-                            background: '#e7e7e7',
+                            background: '#f1f5f9',
                             strokeWidth: '67%',
                             margin: 0,
+                            dropShadow: {
+                                enabled: true,
+                                top: 2,
+                                left: 0,
+                                blur: 4,
+                                opacity: 0.15
+                            }
                         },
                         dataLabels: {
                             show: true,
@@ -148,14 +152,14 @@
                                 offsetY: -10,
                                 show: true,
                                 color: '#888',
-                                fontSize: '17px'
+                                fontSize: '14px'
                             },
                             value: {
                                 formatter: function(val) {
                                     return parseInt(val) + '%';
                                 },
                                 color: '#111',
-                                fontSize: '36px',
+                                fontSize: '28px',
                                 show: true,
                             }
                         }
@@ -168,14 +172,15 @@
                         type: 'horizontal',
                         shadeIntensity: 0.5,
                         gradientToColors: [color],
-                        inverseColors: true,
+                        inverseColors: false,
                         opacityFrom: 1,
                         opacityTo: 1,
                         stops: [0, 100]
                     }
                 },
                 stroke: {
-                    lineCap: 'round'
+                    lineCap: 'round',
+                    dashArray: 0
                 },
                 labels: [label],
             });
@@ -311,30 +316,27 @@
                 const response = await fetch('/api/system-info');
                 const data = await response.json();
 
-                document.getElementById('cpuUsage').textContent = `${data.cpu.usagePercent.toFixed(2)}%`;
                 document.getElementById('cpuInfo').textContent = `${data.cpu.cores} 核心 | ${data.cpu.modelName}`;
 
-                document.getElementById('memoryUsage').textContent = `${data.memory.usagePercent.toFixed(2)}%`;
                 document.getElementById('memoryInfo').textContent = `已用: ${formatBytes(data.memory.used)} / 总计: ${formatBytes(data.memory.total)}`;
 
                 const totalDiskUsed = data.disk.reduce((acc, disk) => acc + disk.used, 0);
                 const totalDiskSpace = data.disk.reduce((acc, disk) => acc + disk.total, 0);
                 const avgDiskUsage = (totalDiskUsed / totalDiskSpace) * 100;
-                document.getElementById('diskUsage').textContent = `${avgDiskUsage.toFixed(2)}%`;
                 document.getElementById('diskInfo').textContent = `已用: ${formatBytes(totalDiskUsed)} / 总计: ${formatBytes(totalDiskSpace)}`;
 
                 const totalBytesSent = data.network.reduce((acc, net) => acc + net.bytesSent, 0);
                 const totalBytesRecv = data.network.reduce((acc, net) => acc + net.bytesRecv, 0);
                 
                 // 计算网络速度
-                const bytesSentPerSecond = (totalBytesSent - lastNetworkBytes.sent) / 5; // 假设每5秒更新一次
+                const bytesSentPerSecond = (totalBytesSent - lastNetworkBytes.sent) / 5;
                 const bytesRecvPerSecond = (totalBytesRecv - lastNetworkBytes.recv) / 5;
                 const totalBytesPerSecond = bytesSentPerSecond + bytesRecvPerSecond;
 
                 document.getElementById('networkTraffic').textContent = `${formatBytes(totalBytesPerSecond)}/s`;
                 document.getElementById('networkInfo').textContent = `上传: ${formatBytes(bytesSentPerSecond)}/s | 下载: ${formatBytes(bytesRecvPerSecond)}/s`;
 
-                // 更新上次的网络字节数
+                // 更新上次的网络字节
                 lastNetworkBytes = { sent: totalBytesSent, recv: totalBytesRecv };
 
                 document.getElementById('hostname').textContent = data.host.hostname;

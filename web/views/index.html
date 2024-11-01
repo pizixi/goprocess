@@ -96,9 +96,10 @@
         }
         #content {
             flex-grow: 1;
-            /* padding: 30px; */
             transition: all 0.3s ease;
             margin-left: 280px;
+            display: flex;
+            flex-direction: column;
         }
         iframe {
             width: 100%;
@@ -108,21 +109,22 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         #menu-toggle {
-            position: fixed;
+            position: absolute;
             top: 20px;
-            left: 300px;
+            right: 20px;
             z-index: 1001;
-            background-color: #58c9b0;
-            color: #000;
+            background-color: transparent;
+            color: #58c9b0;
             border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
+            padding: 8px;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 16px;
         }
         #menu-toggle:hover {
-            background-color: #00b4d8;
+            color: #4ab19a;
+            transform: scale(1.1);
         }
         @media (max-width: 768px) {
             #menu {
@@ -135,8 +137,8 @@
                 margin-left: 0;
             }
             #menu-toggle {
-                left: 20px;
-                transition: all 0.3s ease;
+                top: 15px;
+                right: 15px;
             }
             #menu-toggle.active {
                 left: 230px;
@@ -157,14 +159,305 @@
             transition: all 0.3s ease;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
+        .tab-bar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 8px 16px 0 16px;
+            overflow-x: auto;
+            white-space: nowrap;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .tab {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            margin-right: 6px;
+            cursor: pointer;
+            position: relative;
+            max-width: 200px;
+            min-width: 120px;
+            transition: all 0.3s ease;
+            height: 36px;
+        }
+
+        .tab:hover {
+            background-color: #f0f0f0;
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background-color: #58c9b0;
+            color: #fff;
+            border-color: #58c9b0;
+            box-shadow: 0 -2px 10px rgba(88,201,176,0.2);
+        }
+
+        .tab i {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .tab-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tab-close {
+            font-size: 16px;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            margin-left: auto;
+            opacity: 0.7;
+            transition: all 0.2s ease;
+        }
+
+        .tab-close:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+            opacity: 1;
+        }
+
+        .tab-content {
+            height: calc(100vh - 45px);
+            background-color: #fff;
+            flex: 1;
+        }
+
+        /* 修改滚动条样式 */
+        .tab-bar::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tab-bar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .tab-bar::-webkit-scrollbar-thumb {
+            background: #58c9b0;
+            border-radius: 2px;
+        }
+
+        .tab-bar::-webkit-scrollbar-thumb:hover {
+            background: #4ab19a;
+        }
+
+        @media (max-width: 768px) {
+            #content {
+                margin-left: 0;
+            }
+            
+            .tab-bar {
+                padding: 8px 8px 0 8px;
+            }
+        }
+
+        /* 修改 iframe 样式 */
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* 右键菜单样式 */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 6px 0;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 160px;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #495057;
+            transition: all 0.2s ease;
+        }
+
+        .context-menu-item:hover {
+            background-color: #f8f9fa;
+            color: #58c9b0;
+        }
+
+        /* 修改菜单标题区域样式 */
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 0 10px;
+        }
+
+        .menu-header h2 {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            #menu-toggle {
+                top: 15px;
+                right: 15px;
+            }
+        }
+
+        /* 修改固定切换按钮样式 */
+        #fixed-menu-toggle {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            transform: translateY(0);
+            background-color: #58c9b0;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 999;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        #fixed-menu-toggle:hover {
+            background-color: #4ab19a;
+            padding-right: 15px;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.15);
+        }
+
+        /* 当菜单折叠时显示固定按钮 */
+        #menu.collapsed ~ #fixed-menu-toggle {
+            display: block;
+        }
+
+        /* 移动端样式优化 */
+        @media (max-width: 768px) {
+            #fixed-menu-toggle {
+                top: 60px;
+                left: 10px;
+                transform: none;
+                border-radius: 8px;
+                padding: 8px 12px;
+                width: auto;
+                height: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(88, 201, 176, 0.95);
+                backdrop-filter: blur(5px);
+                box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            #fixed-menu-toggle:hover {
+                background-color: rgba(88, 201, 176, 1);
+                transform: translateX(5px);
+            }
+
+            #fixed-menu-toggle i {
+                font-size: 16px;
+                margin-right: 5px;
+            }
+
+            #fixed-menu-toggle::after {
+                /* content: "菜单"; */
+                font-size: 14px;
+                margin-left: 5px;
+            }
+
+            /* 优化菜单展开/收起动画 */
+            #menu {
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateX(-100%);
+            }
+
+            #menu.active {
+                transform: translateX(0);
+            }
+        }
+
+        /* 优化菜单项样式 */
+        #menu ul li a {
+            text-decoration: none;
+            color: #000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            position: relative;
+            margin-bottom: 5px;
+        }
+
+        #menu ul li a:hover,
+        #menu ul li a.current {
+            background-color: #58c9b0;
+            color: white;
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(88,201,176,0.2);
+        }
+
+        .tab {
+            /* ... 其他样式保持不变 ... */
+            min-width: 120px; /* 默认最小宽度 */
+            max-width: 200px;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .tab {
+                min-width: 80px;
+                max-width: 120px;
+                padding: 8px 10px;
+            }
+            
+            .tab i {
+                margin-right: 4px;
+                font-size: 12px;
+            }
+            
+            .tab-title {
+                font-size: 12px;
+            }
+            
+            .tab-close {
+                font-size: 14px;
+                width: 16px;
+                height: 16px;
+                line-height: 16px;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="menu">
-        <!-- 菜单导航栏居中 -->
-        <h2 style="text-align: center;">
-            GPM<sup style="font-size: 0.5em; position: relative; top: -0.2em;">®</sup>
-          </h2>
+        <div class="menu-header">
+            <h2>
+                GPM<sup style="font-size: 0.5em; position: relative; top: -0.2em;">®</sup>
+            </h2>
+            <button id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
         <ul>
             <li><a href="home.html" target="content-frame"class="current" ><i class="fas fa-home"></i> 首  页</a>
             <li><a href="processes.html" target="content-frame"><i class="fas fa-bars"></i> 进程管理</a></li>
@@ -178,9 +471,23 @@
             <li><a href="page5.html" target="content-frame"><i class="fas fa-question-circle"></i> 帮助</a></li> -->
         </ul>
     </div>
-    <button id="menu-toggle" class="menu-button"><i class="fas fa-bars"></i></button>
+    
+    <!-- 添加固定切换按钮 -->
+    <button id="fixed-menu-toggle" aria-label="切换菜单">
+        <i class="fas fa-angle-right"></i>
+    </button>
+    
     <div id="content">
-        <iframe name="content-frame" src="home.html"></iframe>
+        <div class="tab-bar" id="tabBar"></div>
+        <div class="tab-content">
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu" style="display: none;">
+        <div class="context-menu-item" id="closeTab">关闭标签页</div>
+        <div class="context-menu-item" id="closeOtherTabs">关闭其他标签页</div>
+        <div class="context-menu-item" id="closeAllTabs">关闭所有标签页</div>
     </div>
 
     <script>
@@ -188,32 +495,28 @@
         const menu = document.getElementById('menu');
         const content = document.getElementById('content');
         const menuItems = document.querySelectorAll('#menu ul li a');
+        const fixedMenuToggle = document.getElementById('fixed-menu-toggle');
 
         function toggleMenu() {
             if (window.innerWidth <= 768) {
                 menu.classList.toggle('active');
-                menuToggle.classList.toggle('active');
             } else {
                 menu.classList.toggle('collapsed');
                 content.style.marginLeft = menu.classList.contains('collapsed') ? '0' : '280px';
-                menuToggle.style.left = menu.classList.contains('collapsed') ? '20px' : '300px';
             }
         }
 
         menuToggle.addEventListener('click', toggleMenu);
+        fixedMenuToggle.addEventListener('click', toggleMenu);
 
         function handleResize() {
             if (window.innerWidth <= 768) {
                 menu.classList.remove('collapsed');
                 menu.classList.remove('active');
-                menuToggle.classList.remove('active');
                 content.style.marginLeft = '0';
-                menuToggle.style.left = '20px';
             } else {
                 menu.classList.remove('active');
-                menuToggle.classList.remove('active');
                 content.style.marginLeft = menu.classList.contains('collapsed') ? '0' : '280px';
-                menuToggle.style.left = menu.classList.contains('collapsed') ? '20px' : '300px';
             }
         }
 
@@ -230,7 +533,8 @@
         window.addEventListener('load', init);
 
         menuItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
                 if (window.innerWidth <= 768) {
                     menu.classList.remove('active');
                     menuToggle.classList.remove('active');
@@ -239,7 +543,251 @@
                     li.classList.remove('current');
                 });
                 this.classList.add('current');
+
+                const href = this.getAttribute('href');
+                const title = this.textContent.trim();
+                const icon = this.querySelector('i').className;
+                createTab(href, title, icon);
             });
+        });
+
+        // 添加标签页管理相关代码
+        const tabBar = document.getElementById('tabBar');
+        const contextMenu = document.getElementById('contextMenu');
+        let tabs = new Map();
+        let activeTab = null;
+
+        function createTab(href, title, icon) {
+            if (tabs.has(href)) {
+                activateTab(tabs.get(href));
+                return;
+            }
+
+            // 创建一个临时标签来计算新标签的宽度
+            const tempTab = document.createElement('div');
+            tempTab.className = 'tab';
+            tempTab.style.visibility = 'hidden';
+            tempTab.style.position = 'absolute';
+            tempTab.innerHTML = `
+                <i class="${icon}"></i>
+                <span class="tab-title">${title}</span>
+                <span class="tab-close">×</span>
+            `;
+            
+            // 根据屏幕宽度调整标签最小宽度
+            if (window.innerWidth <= 768) {
+                tempTab.style.minWidth = '80px'; // 移动端更小的最小宽度
+            }
+            
+            tabBar.appendChild(tempTab);
+            const newTabWidth = tempTab.offsetWidth;
+            tabBar.removeChild(tempTab);
+
+            // 计算当前所有标签的总宽度，考虑边距
+            const tabBarWidth = tabBar.offsetWidth - 20; // 预留一些边距
+            let currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0); // +6 是标签间距
+            
+            // 如果添加新标签会导致溢出，则关闭旧标签直到有足够空间
+            while ((currentTabsWidth + newTabWidth + 6) > tabBarWidth && tabs.size > 0) {
+                const tabsArray = Array.from(tabs.values());
+                // 找到第一个非活动的标签
+                const oldestInactiveTab = tabsArray.find(tab => !tab.classList.contains('active'));
+                if (oldestInactiveTab) {
+                    closeTabHandler(oldestInactiveTab);
+                    currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0);
+                } else if (tabsArray.length > 1) {
+                    // 如果没有非活动标签，关闭最早的标签（除了当前活动标签）
+                    const oldestTab = tabsArray[0] === activeTab ? tabsArray[1] : tabsArray[0];
+                    closeTabHandler(oldestTab);
+                    currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0);
+                } else {
+                    break;
+                }
+            }
+
+            // 创建新标签
+            const tab = document.createElement('div');
+            tab.className = 'tab';
+            
+            // 移动端优化：缩短标题
+            let displayTitle = title;
+            if (window.innerWidth <= 768 && title.length > 4) {
+                displayTitle = title.substring(0, 4) + '..';
+            }
+            
+            tab.innerHTML = `
+                <i class="${icon}"></i>
+                <span class="tab-title">${displayTitle}</span>
+                <span class="tab-close">×</span>
+            `;
+            
+            // 移动端调整最小宽度
+            if (window.innerWidth <= 768) {
+                tab.style.minWidth = '80px';
+            }
+            
+            tab.dataset.href = href;
+            tab.dataset.fullTitle = title; // 保存完整标题
+
+            const iframe = document.createElement('iframe');
+            iframe.src = href;
+            iframe.style.display = 'none';
+            iframe.name = `frame-${href}`;
+            document.querySelector('.tab-content').appendChild(iframe);
+            tab.dataset.frameId = iframe.name;
+
+            tab.addEventListener('click', () => activateTab(tab));
+            tab.querySelector('.tab-close').addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeTabHandler(tab);
+            });
+
+            tab.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContextMenu(e, tab);
+            });
+
+            tabBar.appendChild(tab);
+            tabs.set(href, tab);
+            activateTab(tab);
+        }
+
+        // 修改窗口大小时的处理函数
+        function handleTabBarResize() {
+            const tabBarWidth = tabBar.offsetWidth - 20; // 预留边距
+            let currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0);
+            
+            // 调整所有标签的显示
+            Array.from(tabs.values()).forEach(tab => {
+                const title = tab.dataset.fullTitle;
+                const titleSpan = tab.querySelector('.tab-title');
+                
+                if (window.innerWidth <= 768) {
+                    tab.style.minWidth = '80px';
+                    if (title.length > 4) {
+                        titleSpan.textContent = title.substring(0, 4) + '..';
+                    }
+                } else {
+                    tab.style.minWidth = '120px';
+                    titleSpan.textContent = title;
+                }
+            });
+            
+            // 重新计算宽度
+            currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0);
+            
+            // 如果仍然溢出，关闭标签直到适应宽度
+            while (currentTabsWidth > tabBarWidth && tabs.size > 1) {
+                const tabsArray = Array.from(tabs.values());
+                const oldestInactiveTab = tabsArray.find(tab => !tab.classList.contains('active'));
+                
+                if (oldestInactiveTab) {
+                    closeTabHandler(oldestInactiveTab);
+                } else if (tabsArray.length > 1) {
+                    const oldestTab = tabsArray[0] === activeTab ? tabsArray[1] : tabsArray[0];
+                    closeTabHandler(oldestTab);
+                } else {
+                    break;
+                }
+                
+                currentTabsWidth = Array.from(tabBar.children).reduce((total, tab) => total + tab.offsetWidth + 6, 0);
+            }
+        }
+
+        // 添加防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 添加窗口大小改变时的检查（使用防抖）
+        window.addEventListener('resize', debounce(() => {
+            handleTabBarResize();
+        }, 250));
+
+        function activateTab(tab) {
+            if (activeTab) {
+                activeTab.classList.remove('active');
+                const currentFrame = document.getElementsByName(activeTab.dataset.frameId)[0];
+                if (currentFrame) {
+                    currentFrame.style.display = 'none';
+                }
+            }
+            
+            tab.classList.add('active');
+            activeTab = tab;
+            
+            const targetFrame = document.getElementsByName(tab.dataset.frameId)[0];
+            if (targetFrame) {
+                targetFrame.style.display = 'block';
+            }
+        }
+
+        function closeTabHandler(tab) {
+            if (tabs.size === 1) return; // 保持至少一个标签页
+            
+            const isActive = tab.classList.contains('active');
+            const nextTab = tab.nextElementSibling || tab.previousElementSibling;
+            
+            const frame = document.getElementsByName(tab.dataset.frameId)[0];
+            if (frame) {
+                frame.remove();
+            }
+            
+            tabs.delete(tab.dataset.href);
+            tab.remove();
+
+            if (isActive && nextTab) {
+                activateTab(nextTab);
+            }
+        }
+
+        function showContextMenu(e, targetTab) {
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+            
+            document.getElementById('closeTab').onclick = () => {
+                hideContextMenu();
+                closeTabHandler(targetTab);
+            };
+
+            document.getElementById('closeOtherTabs').onclick = () => {
+                hideContextMenu();
+                Array.from(tabs.values())
+                    .filter(t => t !== targetTab)
+                    .forEach(t => closeTabHandler(t));
+            };
+
+            document.getElementById('closeAllTabs').onclick = () => {
+                hideContextMenu();
+                const tabsArray = Array.from(tabs.values());
+                tabsArray.slice(1).forEach(t => closeTabHandler(t));
+                activateTab(tabsArray[0]);
+            };
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        // 初始化首页标签
+        window.addEventListener('load', () => {
+            const homeLink = document.querySelector('a[href="home.html"]');
+            createTab('home.html', '首 页', 'fas fa-home');
         });
     </script>
 </body>
