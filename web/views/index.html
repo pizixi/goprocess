@@ -321,9 +321,9 @@
         /* 修改固定切换按钮样式 */
         #fixed-menu-toggle {
             position: fixed;
-            top: 60px;
+            top: 50%;
             left: 0;
-            transform: translateY(0);
+            transform: translateY(-50%);
             background-color: #58c9b0;
             color: white;
             border: none;
@@ -350,10 +350,10 @@
         /* 移动端样式优化 */
         @media (max-width: 768px) {
             #fixed-menu-toggle {
-                top: 60px;
-                left: 10px;
-                transform: none;
-                border-radius: 8px;
+                top: 50%;
+                left: 0;
+                transform: translateY(-50%);
+                border-radius: 0 8px 8px 0;
                 padding: 8px 12px;
                 width: auto;
                 height: auto;
@@ -368,7 +368,7 @@
 
             #fixed-menu-toggle:hover {
                 background-color: rgba(88, 201, 176, 1);
-                transform: translateX(5px);
+                padding-right: 15px;
             }
 
             #fixed-menu-toggle i {
