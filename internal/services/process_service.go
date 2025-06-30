@@ -14,6 +14,7 @@ import (
 	"github.com/natefinch/lumberjack"
 	"github.com/pizixi/goprocess/internal/models"
 	"github.com/pizixi/goprocess/internal/websocket"
+	"github.com/pizixi/goprocess/pkg/utils"
 )
 
 type ProcessService struct {
@@ -97,6 +98,11 @@ func (ps *ProcessService) StartProcessById(id uint) {
 	for retryCount < rp.RetryCount {
 		cmd := kexec.CommandString(rp.Command)
 		cmd.Dir = rp.WorkDir
+
+		// 在Windows下隐藏命令行窗口
+		if runtime.GOOS == "windows" {
+			utils.SetSysProcAttr(cmd.Cmd)
+		}
 
 		// logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
 		// if err := os.MkdirAll(logDir, 0755); err != nil {

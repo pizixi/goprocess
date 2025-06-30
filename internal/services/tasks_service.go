@@ -15,6 +15,7 @@ import (
 	"github.com/codeskyblue/kexec"
 	"github.com/natefinch/lumberjack"
 	"github.com/pizixi/goprocess/internal/models"
+	"github.com/pizixi/goprocess/pkg/utils"
 	"github.com/robfig/cron/v3"
 )
 
@@ -122,6 +123,11 @@ func ExecuteTask(task *models.Task) {
 		cmd = kexec.CommandString(task.Command)
 	}
 	cmd.Dir = task.WorkDir
+
+	// 在Windows下隐藏命令行窗口
+	if runtime.GOOS == "windows" {
+		utils.SetSysProcAttr(cmd.Cmd)
+	}
 
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Printf("为任务 %v 创建日志目录时出错: %v\n", task.ID, err)
