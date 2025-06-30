@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"runtime"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -24,15 +25,35 @@ import (
 var PS *services.ProcessService
 
 func GoprocessMain() {
+	log.Printf("=== GoprocessMain 开始执行 ===")
+
+	// 使用defer来捕获panic
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("GoprocessMain发生panic: %v", r)
+			// 获取堆栈信息
+			buf := make([]byte, 1024*64)
+			n := runtime.Stack(buf, false)
+			log.Printf("GoprocessMain堆栈信息:\n%s", string(buf[:n]))
+		}
+		log.Printf("=== GoprocessMain 结束执行 ===")
+	}()
+
 	// 读取配置文件
+	log.Printf("开始读取配置文件...")
 	if err := config.ReadConfigFromJSON(); err != nil {
+		log.Printf("读取配置文件失败: %v", err)
 		panic("failed to read config from JSON: " + err.Error())
 	}
+	log.Printf("配置文件读取成功")
 
+	log.Printf("开始初始化数据库...")
 	db, err := models.NewGormDatabase("processes.db")
 	if err != nil {
+		log.Printf("初始化数据库失败: %v", err)
 		log.Fatalf("初始化数据库失败: %v", err)
 	}
+	log.Printf("数据库初始化成功")
 	logFile := &lumberjack.Logger{
 		Filename:   filepath.Join("logs", "goprocess.log"),
 		MaxSize:    100,
@@ -210,10 +231,20 @@ func GoprocessMain() {
 	defer cronJob.Stop()
 
 	// 设置关闭进程处理
+	log.Printf("设置关闭进程处理...")
 	PS.SetupCloseHandler()
+	log.Printf("关闭进程处理设置完成")
 
 	// 启动服务器
-	e.Logger.Fatal(e.Start(config.Conf.Addr))
+	log.Printf("准备启动Web服务器，监听地址: %s", config.Conf.Addr)
+	log.Printf("服务器启动中...")
+	err = e.Start(config.Conf.Addr)
+	if err != nil {
+		log.Printf("Web服务器启动失败: %v", err)
+		e.Logger.Fatal(err)
+	} else {
+		log.Printf("Web服务器正常退出")
+	}
 }
 
 // TemplateRenderer 是自定义的模板渲染器

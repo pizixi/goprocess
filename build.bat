@@ -10,7 +10,7 @@ SET GOOS=windows
 SET GOARCH=amd64
 SET CGO_ENABLED=1
 go build -ldflags "-H windowsgui -s -w" -o goprocess.exe
-
+pause
 echo 正在编译Linux版本...
 SET GOOS=linux
 SET GOARCH=amd64
