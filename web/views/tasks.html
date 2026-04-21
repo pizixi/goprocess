@@ -71,14 +71,14 @@
             justify-content: center;
             gap: 6px;
             width: auto;
-            height: 32px;
-            padding: 0 10px;
+            height: 36px;
+            padding: 0 14px;
             border: 1px solid rgba(15, 118, 110, 0.28);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.72);
             box-shadow: 0 2px 8px rgba(15, 118, 110, 0.08);
             color: var(--primary);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
@@ -93,16 +93,16 @@
         }
 
         #addTaskBtn svg {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             display: block;
             stroke: currentColor;
         }
 
         .action-icon-btn svg,
         .inline-svg {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             display: block;
             stroke: currentColor;
         }
@@ -114,16 +114,16 @@
 
         .button-svg {
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             margin-right: 6px;
-            vertical-align: -2px;
+            vertical-align: -3px;
             stroke: currentColor;
         }
 
         .button-svg svg {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             display: block;
             stroke: currentColor;
         }
@@ -147,6 +147,7 @@
             background: #f8fafc;
             color: #334155;
             font-weight: 700;
+            font-size: 15px;
         }
 
         .layui-table-body tr:hover {
@@ -156,7 +157,8 @@
         .layui-table-cell {
             height: 54px;
             line-height: 54px;
-            padding: 0 10px;
+            padding: 0 12px;
+            font-size: 15px;
             overflow: hidden !important;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -167,25 +169,18 @@
         }
 
         .status-switch-wrap {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            width: 100%;
             white-space: nowrap;
-        }
-
-        .status-label {
-            display: inline-block;
-            min-width: 34px;
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 700;
         }
 
         .action-buttons {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
             white-space: nowrap;
         }
 
@@ -193,8 +188,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             padding: 0;
             border: none;
             border-radius: 0;
@@ -202,7 +197,7 @@
             box-shadow: none;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
-            opacity: 0.88;
+            opacity: 0.92;
         }
 
         .action-icon-btn:hover {
@@ -312,8 +307,8 @@
             }
 
             .action-icon-btn {
-                width: 30px;
-                height: 30px;
+                width: 34px;
+                height: 34px;
             }
 
             .action-buttons {
@@ -367,6 +362,14 @@ layui.use(['table', 'form', 'layer'], function () {
         curr: 1,
         limit: 20
     };
+    var DEFAULT_SORT = {
+        field: 'ID',
+        type: 'desc'
+    };
+    var sortState = {
+        field: DEFAULT_SORT.field,
+        type: DEFAULT_SORT.type
+    };
     var tooltipIndex = null;
 
     function debounce(fn, wait) {
@@ -403,9 +406,53 @@ layui.use(['table', 'form', 'layer'], function () {
         return Math.max(240, Math.floor(availableHeight));
     }
 
+    function compareNumber(left, right) {
+        return (Number(left) || 0) - (Number(right) || 0);
+    }
+
+    function compareText(left, right) {
+        return String(left == null ? '' : left).localeCompare(
+            String(right == null ? '' : right),
+            'zh-Hans-CN',
+            { numeric: true, sensitivity: 'base' }
+        );
+    }
+
+    function compareTaskItems(a, b, field) {
+        if (field === 'ID') {
+            return compareNumber(a.ID, b.ID);
+        }
+
+        if (field === 'isEnabled') {
+            return compareNumber(a.isEnabled ? 1 : 0, b.isEnabled ? 1 : 0) || compareText(a.name, b.name);
+        }
+
+        return compareText(a[field], b[field]);
+    }
+
+    function getPageOptions(curr) {
+        return {
+            curr: curr || pageState.curr || 1,
+            limit: pageState.limit,
+            limits: PAGE_LIMITS,
+            layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
+        };
+    }
+
+    function getInitSort() {
+        return {
+            field: sortState.field,
+            type: sortState.type
+        };
+    }
+
     function sortTasks(tasks) {
         return (tasks || []).slice().sort(function (a, b) {
-            return b.ID - a.ID;
+            var result = compareTaskItems(a, b, sortState.field);
+            if (result === 0) {
+                result = compareNumber(a.ID, b.ID);
+            }
+            return sortState.type === 'asc' ? result : -result;
         });
     }
 
@@ -430,7 +477,7 @@ layui.use(['table', 'form', 'layer'], function () {
     }
 
     function statusTpl(d) {
-        return '<div class="status-switch-wrap"><input type="checkbox" name="isEnabled" value="' + d.ID + '" lay-skin="switch" lay-text="启用|禁用" lay-filter="statusSwitch" ' + (d.isEnabled ? 'checked' : '') + '><span class="status-label">' + (d.isEnabled ? '启用' : '禁用') + '</span></div>';
+        return '<div class="status-switch-wrap"><input type="checkbox" name="isEnabled" value="' + d.ID + '" lay-skin="switch" lay-text="启用|禁用" lay-filter="statusSwitch" ' + (d.isEnabled ? 'checked' : '') + '></div>';
     }
 
     var actionToolbar = [
@@ -445,20 +492,20 @@ layui.use(['table', 'form', 'layer'], function () {
     function getCols() {
         if (window.innerWidth < 768) {
             return [[
-                { field: 'name', title: '任务名', minWidth: 150, templet: function (d) { return renderEllipsisCell(d.name); } },
-                { field: 'isEnabled', title: '状态', width: 170, templet: statusTpl, unresize: true },
-                { fixed: 'right', title: '操作', align: 'center', width: 210, toolbar: actionToolbar }
+                { field: 'name', title: '任务名', minWidth: 138, sort: true, templet: function (d) { return renderEllipsisCell(d.name); } },
+                { field: 'isEnabled', title: '状态', width: 120, sort: true, templet: statusTpl, unresize: true },
+                { fixed: 'right', title: '操作', align: 'center', width: 228, toolbar: actionToolbar }
             ]];
         }
 
         return [[
-            { field: 'ID', title: 'ID', width: 76, sort: true, align: 'center' },
-            { field: 'name', title: '任务名', minWidth: 150, templet: function (d) { return renderEllipsisCell(d.name); } },
-            { field: 'isEnabled', title: '状态', width: 170, templet: statusTpl, unresize: true },
-            { field: 'cron', title: '定时表达式', minWidth: 180, templet: function (d) { return renderEllipsisCell(d.cron); } },
-            { field: 'workDir', title: '工作目录', minWidth: 180, templet: function (d) { return renderEllipsisCell(d.workDir); } },
-            { field: 'command', title: '任务命令', minWidth: 260, templet: function (d) { return renderEllipsisCell(d.command); } },
-            { fixed: 'right', title: '操作', align: 'center', width: 210, toolbar: actionToolbar }
+            { field: 'ID', title: 'ID', width: 80, sort: true, align: 'center' },
+            { field: 'name', title: '任务名', minWidth: 138, sort: true, templet: function (d) { return renderEllipsisCell(d.name); } },
+            { field: 'isEnabled', title: '状态', width: 120, sort: true, templet: statusTpl, unresize: true },
+            { field: 'cron', title: '定时表达式', minWidth: 200, sort: true, templet: function (d) { return renderEllipsisCell(d.cron); } },
+            { field: 'workDir', title: '工作目录', minWidth: 220, sort: true, templet: function (d) { return renderEllipsisCell(d.workDir); } },
+            { field: 'command', title: '任务命令', minWidth: 320, sort: true, templet: function (d) { return renderEllipsisCell(d.command); } },
+            { fixed: 'right', title: '操作', align: 'center', width: 228, toolbar: actionToolbar }
         ]];
     }
 
@@ -477,14 +524,11 @@ layui.use(['table', 'form', 'layer'], function () {
             data: allTasks,
             cols: getCols(),
             height: getTableHeight(),
-            page: {
-                curr: pageState.curr,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            },
+            page: getPageOptions(pageState.curr),
             limit: pageState.limit,
             lineStyle: 'height: 54px;',
+            autoSort: false,
+            initSort: getInitSort(),
             skin: 'line',
             even: true,
             text: {
@@ -508,14 +552,11 @@ layui.use(['table', 'form', 'layer'], function () {
             data: allTasks,
             cols: getCols(),
             height: getTableHeight(),
-            page: {
-                curr: nextPage,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            },
+            page: getPageOptions(nextPage),
             limit: pageState.limit,
             lineStyle: 'height: 54px;',
+            autoSort: false,
+            initSort: getInitSort(),
             done: handleTableDone
         }, options || {}));
     }
@@ -563,12 +604,7 @@ layui.use(['table', 'form', 'layer'], function () {
         }
 
         reloadTable({
-            page: {
-                curr: targetPage,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            }
+            page: getPageOptions(targetPage)
         });
     }
 
@@ -580,6 +616,7 @@ layui.use(['table', 'form', 'layer'], function () {
             return;
         }
         allTasks[index] = Object.assign({}, allTasks[index], patch);
+        allTasks = sortTasks(allTasks);
         reloadTable();
     }
 
@@ -911,6 +948,21 @@ layui.use(['table', 'form', 'layer'], function () {
         if (obj.event === 'del') {
             deleteTask(data.ID, data.isEnabled);
         }
+    });
+
+    table.on('sort(taskTable)', function (obj) {
+        sortState = obj.type ? {
+            field: obj.field,
+            type: obj.type
+        } : {
+            field: DEFAULT_SORT.field,
+            type: DEFAULT_SORT.type
+        };
+        allTasks = sortTasks(allTasks);
+        reloadTable({
+            initSort: getInitSort(),
+            page: getPageOptions(1)
+        });
     });
 
     table.on('rowDouble(taskTable)', function (obj) {

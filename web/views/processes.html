@@ -71,14 +71,14 @@
             justify-content: center;
             gap: 6px;
             width: auto;
-            height: 32px;
-            padding: 0 10px;
+            height: 36px;
+            padding: 0 14px;
             border: 1px solid rgba(15, 118, 110, 0.28);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.72);
             box-shadow: 0 2px 8px rgba(15, 118, 110, 0.08);
             color: var(--primary);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
@@ -93,16 +93,16 @@
         }
 
         #addProcessBtn svg {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             display: block;
             stroke: currentColor;
         }
 
         .action-icon-btn svg,
         .inline-svg {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             display: block;
             stroke: currentColor;
         }
@@ -114,16 +114,16 @@
 
         .button-svg {
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             margin-right: 6px;
-            vertical-align: -2px;
+            vertical-align: -3px;
             stroke: currentColor;
         }
 
         .button-svg svg {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             display: block;
             stroke: currentColor;
         }
@@ -147,6 +147,7 @@
             background: #f8fafc;
             color: #334155;
             font-weight: 700;
+            font-size: 15px;
         }
 
         .layui-table-body tr:hover {
@@ -156,7 +157,8 @@
         .layui-table-cell {
             height: 54px;
             line-height: 54px;
-            padding: 0 10px;
+            padding: 0 12px;
+            font-size: 15px;
             overflow: hidden !important;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -172,7 +174,7 @@
             gap: 7px;
             padding: 5px 10px;
             border-radius: 999px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             line-height: 1;
             white-space: nowrap;
@@ -213,7 +215,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
             white-space: nowrap;
         }
 
@@ -221,8 +223,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             padding: 0;
             border: none;
             border-radius: 0;
@@ -230,7 +232,7 @@
             box-shadow: none;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
-            opacity: 0.88;
+            opacity: 0.92;
         }
 
         .action-icon-btn:hover {
@@ -343,8 +345,8 @@
             }
 
             .action-icon-btn {
-                width: 30px;
-                height: 30px;
+                width: 34px;
+                height: 34px;
             }
 
             .action-buttons {
@@ -398,6 +400,14 @@ layui.use(['table', 'form', 'layer'], function () {
         curr: 1,
         limit: 20
     };
+    var DEFAULT_SORT = {
+        field: 'ID',
+        type: 'desc'
+    };
+    var sortState = {
+        field: DEFAULT_SORT.field,
+        type: DEFAULT_SORT.type
+    };
     var tooltipIndex = null;
     var reconnectTimer = null;
 
@@ -407,6 +417,13 @@ layui.use(['table', 'form', 'layer'], function () {
         starting: { label: '启动中', className: 'status-starting', icon: 'loader' },
         stopping: { label: '停止中', className: 'status-stopping', icon: 'loader' },
         error: { label: '异常', className: 'status-error', icon: 'warning' }
+    };
+    var statusSortWeight = {
+        stopped: 1,
+        error: 2,
+        stopping: 3,
+        starting: 4,
+        running: 5
     };
 
     var svgIcons = {
@@ -466,9 +483,55 @@ layui.use(['table', 'form', 'layer'], function () {
         };
     }
 
+    function compareNumber(left, right) {
+        return (Number(left) || 0) - (Number(right) || 0);
+    }
+
+    function compareText(left, right) {
+        return String(left == null ? '' : left).localeCompare(
+            String(right == null ? '' : right),
+            'zh-Hans-CN',
+            { numeric: true, sensitivity: 'base' }
+        );
+    }
+
+    function compareProcessItems(a, b, field) {
+        if (field === 'ID' || field === 'PID') {
+            return compareNumber(a[field], b[field]);
+        }
+
+        if (field === 'Status') {
+            var leftWeight = statusSortWeight[String(a.Status || '').toLowerCase()] || 0;
+            var rightWeight = statusSortWeight[String(b.Status || '').toLowerCase()] || 0;
+            return compareNumber(leftWeight, rightWeight) || compareText(getStatusMeta(a.Status).label, getStatusMeta(b.Status).label);
+        }
+
+        return compareText(a[field], b[field]);
+    }
+
+    function getPageOptions(curr) {
+        return {
+            curr: curr || pageState.curr || 1,
+            limit: pageState.limit,
+            limits: PAGE_LIMITS,
+            layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
+        };
+    }
+
+    function getInitSort() {
+        return {
+            field: sortState.field,
+            type: sortState.type
+        };
+    }
+
     function sortProcesses(processes) {
         return (processes || []).slice().sort(function (a, b) {
-            return b.ID - a.ID;
+            var result = compareProcessItems(a, b, sortState.field);
+            if (result === 0) {
+                result = compareNumber(a.ID, b.ID);
+            }
+            return sortState.type === 'asc' ? result : -result;
         });
     }
 
@@ -501,19 +564,19 @@ layui.use(['table', 'form', 'layer'], function () {
     function getCols() {
         if (window.innerWidth < 768) {
             return [[
-                { field: 'Name', title: '进程名', minWidth: 140, templet: function (d) { return renderEllipsisCell(d.Name); } },
-                { field: 'Status', title: '状态', width: 118, align: 'center', templet: statusTpl },
-                { fixed: 'right', title: '操作', align: 'center', width: 276, toolbar: actionToolbar }
+                { field: 'Name', title: '进程名', minWidth: 132, sort: true, templet: function (d) { return renderEllipsisCell(d.Name); } },
+                { field: 'Status', title: '状态', width: 132, sort: true, align: 'center', templet: statusTpl },
+                { fixed: 'right', title: '操作', align: 'center', width: 296, toolbar: actionToolbar }
             ]];
         }
 
         return [[
-            { field: 'ID', title: 'ID', width: 76, sort: true, align: 'center' },
-            { field: 'Name', title: '进程名', minWidth: 160, templet: function (d) { return renderEllipsisCell(d.Name); } },
-            { field: 'Command', title: '命令行', minWidth: 280, templet: function (d) { return renderEllipsisCell(d.Command); } },
-            { field: 'PID', title: 'PID', width: 92, align: 'center' },
-            { field: 'Status', title: '状态', width: 130, align: 'center', templet: statusTpl },
-            { fixed: 'right', title: '操作', align: 'center', width: 276, toolbar: actionToolbar }
+            { field: 'ID', title: 'ID', width: 80, sort: true, align: 'center' },
+            { field: 'Name', title: '进程名', minWidth: 140, sort: true, templet: function (d) { return renderEllipsisCell(d.Name); } },
+            { field: 'Command', title: '命令行', minWidth: 320, sort: true, templet: function (d) { return renderEllipsisCell(d.Command); } },
+            { field: 'PID', title: 'PID', width: 96, sort: true, align: 'center' },
+            { field: 'Status', title: '状态', width: 136, sort: true, align: 'center', templet: statusTpl },
+            { fixed: 'right', title: '操作', align: 'center', width: 312, toolbar: actionToolbar }
         ]];
     }
 
@@ -531,14 +594,11 @@ layui.use(['table', 'form', 'layer'], function () {
             data: allProcesses,
             cols: getCols(),
             height: getTableHeight(),
-            page: {
-                curr: pageState.curr,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            },
+            page: getPageOptions(pageState.curr),
             limit: pageState.limit,
             lineStyle: 'height: 54px;',
+            autoSort: false,
+            initSort: getInitSort(),
             skin: 'line',
             even: true,
             text: {
@@ -562,14 +622,11 @@ layui.use(['table', 'form', 'layer'], function () {
             data: allProcesses,
             cols: getCols(),
             height: getTableHeight(),
-            page: {
-                curr: nextPage,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            },
+            page: getPageOptions(nextPage),
             limit: pageState.limit,
             lineStyle: 'height: 54px;',
+            autoSort: false,
+            initSort: getInitSort(),
             done: handleTableDone
         }, options || {}));
     }
@@ -617,12 +674,7 @@ layui.use(['table', 'form', 'layer'], function () {
         }
 
         reloadTable({
-            page: {
-                curr: targetPage,
-                limit: pageState.limit,
-                limits: PAGE_LIMITS,
-                layout: ['prev', 'page', 'next', 'limit', 'count', 'skip']
-            }
+            page: getPageOptions(targetPage)
         });
     }
 
@@ -639,6 +691,7 @@ layui.use(['table', 'form', 'layer'], function () {
         }
 
         allProcesses[index] = Object.assign({}, allProcesses[index], process);
+        allProcesses = sortProcesses(allProcesses);
         reloadTable();
     }
 
@@ -1038,6 +1091,21 @@ layui.use(['table', 'form', 'layer'], function () {
         if (obj.event === 'del') {
             deleteProcess(data.ID);
         }
+    });
+
+    table.on('sort(processTable)', function (obj) {
+        sortState = obj.type ? {
+            field: obj.field,
+            type: obj.type
+        } : {
+            field: DEFAULT_SORT.field,
+            type: DEFAULT_SORT.type
+        };
+        allProcesses = sortProcesses(allProcesses);
+        reloadTable({
+            initSort: getInitSort(),
+            page: getPageOptions(1)
+        });
     });
 
     table.on('rowDouble(processTable)', function (obj) {
