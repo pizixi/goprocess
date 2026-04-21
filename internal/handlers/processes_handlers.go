@@ -130,6 +130,25 @@ func (h *ProcessHandler) StopProcessHandler(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "stopping", "message": "Process is being stopped"})
 }
+
+func (h *ProcessHandler) RestartProcessHandler(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	rp, exists := h.PM.GetProcess(uint(id))
+	if !exists {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
+	}
+
+	if rp.Status == "starting" || rp.Status == "stopping" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Process %d is %s", rp.ID, rp.Status)})
+	}
+
+	if err := h.PS.RestartProcessByID(uint(id)); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "restarting", "message": "Process is being restarted"})
+}
+
 func (h *ProcessHandler) GetProcesseLogsHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	rp, exists := h.PM.GetProcess(uint(id))

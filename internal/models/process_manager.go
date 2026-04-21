@@ -25,8 +25,8 @@ func NewProcessManager(db Database) *ProcessManager {
 }
 
 func (pm *ProcessManager) LoadProcesses(ctx context.Context) error {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 	var processes []Process
 	err := pm.db.Find(ctx, &processes)
 	if err != nil {

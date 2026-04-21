@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -53,6 +54,29 @@ func (ps *ProcessService) StopAllProcesses() {
 		}
 	}
 	log.Println("All processes stopped")
+}
+
+func (ps *ProcessService) RestartProcessByID(id uint) error {
+	rp, exists := ps.PM.GetProcess(id)
+	if !exists {
+		return errors.New("process not found")
+	}
+
+	switch rp.Status {
+	case "starting", "stopping":
+		return fmt.Errorf("process %d is %s", rp.ID, rp.Status)
+	case "running":
+		go func() {
+			ps.StopProcessByID(id)
+			ps.PM.SetManualStop(id, false)
+			ps.StartProcessById(id)
+		}()
+	default:
+		ps.PM.SetManualStop(id, false)
+		go ps.StartProcessById(id)
+	}
+
+	return nil
 }
 
 func (ps *ProcessService) StartProcessById(id uint) {
@@ -183,6 +207,7 @@ func (ps *ProcessService) StopProcessByID(id uint) {
 
 	ps.PM.UpdateProcessStatus(id, "stopping", rp.PID)
 	ps.PM.SetManualStop(id, true)
+	websocket.BroadcastStatus(*rp)
 
 	stopch := make(chan bool)
 	go func() {
@@ -207,6 +232,7 @@ func (ps *ProcessService) StopProcessByID(id uint) {
 	ps.PM.RemoveCommand(id)
 
 	ps.PM.UpdateProcessStatus(id, "stopped", 0)
+	websocket.BroadcastStatus(*rp)
 
 	if err != nil && err.Error() != "signal: killed" {
 		log.Printf("Error waiting for process %d to stop: %v", id, err)

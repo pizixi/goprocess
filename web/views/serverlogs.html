@@ -5,14 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>系统日志面板</title>
     <link rel="stylesheet" href="/static/layui-v2.9.14/layui/css/layui.css">
-    <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="/static/logs.css">
 </head>
 <body>
     <div id="app">
-        <!-- <header>
-            <h1><i class="fas fa-server"></i> 系统日志面板</h1>
-        </header> -->
         <main>
             <div id="logWrapper">
                 <div class="log-controls">
@@ -23,14 +19,28 @@
                         </label>
                         <span>自动滚动</span>
                     </div>
-                    <button id="clearLogs" class="btn"><i class="fas fa-trash-alt"></i> 清空日志</button>
+                    <button id="clearLogs" class="btn">
+                        <span class="btn-svg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M5 7h14"></path>
+                                <path d="M10 11v6"></path>
+                                <path d="M14 11v6"></path>
+                                <path d="M8 7l.8 13h6.4L16 7"></path>
+                                <path d="M9.5 7l.6-3h3.8l.6 3"></path>
+                            </svg>
+                        </span>
+                        清空日志
+                    </button>
                     <div class="control-group">
                         <label for="maxLines">最大行数:</label>
                         <input type="number" id="maxLines" value="800" min="100" step="100">
                     </div>
                     <div class="search-container">
                         <input type="text" id="filterLogs" placeholder="筛选日志...">
-                        <i class="fas fa-search"></i>
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="6.5"></circle>
+                            <path d="m16 16 4 4"></path>
+                        </svg>
                     </div>
                 </div>
                 <div id="logContainer" class="terminal"></div>

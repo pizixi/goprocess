@@ -6,8 +6,7 @@
     <title>goprocess管理平台</title>
     <link rel="icon" href="static/images/favicon.ico" type="image/x-icon">
     <!-- <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet"> -->
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"> -->
-    <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
+    <script src="/static/icons.js"></script>
     <style>
         * {
             margin: 0;
@@ -89,11 +88,34 @@
         #menu ul li a.current::before {
             opacity: 1;
         }
-        #menu ul li a i {
+        #menu ul li a .nav-icon {
             margin-right: 15px;
             width: 20px;
+            height: 20px;
             text-align: center;
-            font-size: 1.2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .nav-icon svg,
+        .tab-icon svg,
+        .menu-toggle-icon svg,
+        .fixed-toggle-icon svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            stroke: currentColor;
+        }
+
+        .menu-toggle-icon,
+        .fixed-toggle-icon {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         #content {
             flex-grow: 1;
@@ -201,9 +223,14 @@
             box-shadow: 0 -2px 10px rgba(88,201,176,0.2);
         }
 
-        .tab i {
+        .tab-icon {
             margin-right: 8px;
-            font-size: 14px;
+            width: 15px;
+            height: 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         .tab-title {
@@ -372,8 +399,9 @@
                 padding-right: 15px;
             }
 
-            #fixed-menu-toggle i {
-                font-size: 16px;
+            #fixed-menu-toggle .fixed-toggle-icon {
+                width: 16px;
+                height: 16px;
                 margin-right: 5px;
             }
 
@@ -431,9 +459,10 @@
                 padding: 8px 10px;
             }
             
-            .tab i {
+            .tab-icon {
                 margin-right: 4px;
-                font-size: 12px;
+                width: 13px;
+                height: 13px;
             }
             
             .tab-title {
@@ -455,27 +484,23 @@
             <h2>
                 GPM<sup style="font-size: 0.5em; position: relative; top: -0.2em;">®</sup>
             </h2>
-            <button id="menu-toggle">
-                <i class="fas fa-bars"></i>
+            <button id="menu-toggle" aria-label="切换菜单">
+                <span class="menu-toggle-icon" data-svg-icon="menu"></span>
             </button>
         </div>
         <ul>
-            <li><a href="home.html" target="content-frame"class="current" ><i class="fas fa-home"></i> 首  页</a>
-            <li><a href="processes.html" target="content-frame"><i class="fas fa-bars"></i> 进程管理</a></li>
-            <li><a href="tasks.html" target="content-frame"><i class="fas fa-tasks"></i> 定时任务</a></li>
-            <li><a href="webshell.html" target="content-frame"><i class="fas fa-terminal"></i> 终端管理</a></li>
-            <li><a href="filemanager.html" target="content-frame"><i class="fas fa-file"></i> 文件管理</a></li>
-            <li><a href="serverlogs.html" target="content-frame"><i class="fas fa-server"></i> 系统日志</a></li>
-            <!-- <li><a href="page2.html" target="content-frame"><i class="fas fa-info-circle"></i> 关于我们</a></li>
-            <li><a href="page3.html" target="content-frame"><i class="fas fa-envelope"></i> 联系我们</a></li>
-            <li><a href="page4.html" target="content-frame"><i class="fas fa-cog"></i> 设置</a></li>
-            <li><a href="page5.html" target="content-frame"><i class="fas fa-question-circle"></i> 帮助</a></li> -->
+            <li><a href="home.html" target="content-frame" class="current" data-icon="home"><span class="nav-icon" data-svg-icon="home"></span> 首  页</a></li>
+            <li><a href="processes.html" target="content-frame" data-icon="processes"><span class="nav-icon" data-svg-icon="processes"></span> 进程管理</a></li>
+            <li><a href="tasks.html" target="content-frame" data-icon="tasks"><span class="nav-icon" data-svg-icon="tasks"></span> 定时任务</a></li>
+            <li><a href="webshell.html" target="content-frame" data-icon="terminal"><span class="nav-icon" data-svg-icon="terminal"></span> 终端管理</a></li>
+            <li><a href="filemanager.html" target="content-frame" data-icon="file"><span class="nav-icon" data-svg-icon="file"></span> 文件管理</a></li>
+            <li><a href="serverlogs.html" target="content-frame" data-icon="server"><span class="nav-icon" data-svg-icon="server"></span> 系统日志</a></li>
         </ul>
     </div>
     
     <!-- 添加固定切换按钮 -->
     <button id="fixed-menu-toggle" aria-label="切换菜单">
-        <i class="fas fa-angle-right"></i>
+        <span class="fixed-toggle-icon" data-svg-icon="chevronRight"></span>
     </button>
     
     <div id="content">
@@ -547,7 +572,7 @@
 
                 const href = this.getAttribute('href');
                 const title = this.textContent.trim();
-                const icon = this.querySelector('i').className;
+                const icon = this.dataset.icon || 'file';
                 createTab(href, title, icon);
             });
         });
@@ -570,7 +595,7 @@
             tempTab.style.visibility = 'hidden';
             tempTab.style.position = 'absolute';
             tempTab.innerHTML = `
-                <i class="${icon}"></i>
+                ${gpmIcons.icon(icon, 'tab-icon')}
                 <span class="tab-title">${title}</span>
                 <span class="tab-close">×</span>
             `;
@@ -617,7 +642,7 @@
             }
             
             tab.innerHTML = `
-                <i class="${icon}"></i>
+                ${gpmIcons.icon(icon, 'tab-icon')}
                 <span class="tab-title">${displayTitle}</span>
                 <span class="tab-close">×</span>
             `;
@@ -787,8 +812,7 @@
 
         // 初始化首页标签
         window.addEventListener('load', () => {
-            const homeLink = document.querySelector('a[href="home.html"]');
-            createTab('home.html', '首 页', 'fas fa-home');
+            createTab('home.html', '首 页', 'home');
         });
     </script>
 </body>

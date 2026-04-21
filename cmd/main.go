@@ -142,6 +142,7 @@ func GoprocessMain() {
 		e.DELETE("/api/process/:id", processHandler.DeleteProcessHandler, handlers.AuthMiddleware)
 		e.POST("/api/process/:id/start", processHandler.StartProcessHandler, handlers.AuthMiddleware)
 		e.POST("/api/process/:id/stop", processHandler.StopProcessHandler, handlers.AuthMiddleware)
+		e.POST("/api/process/:id/restart", processHandler.RestartProcessHandler, handlers.AuthMiddleware)
 		e.GET("/api/process/:id/logstream", processHandler.GetProcesseLogsHandler, handlers.AuthMiddleware)
 		e.GET("/ws", websocket.HandleWebSocket, handlers.AuthMiddleware)
 
@@ -185,6 +186,7 @@ func GoprocessMain() {
 		e.DELETE("/api/process/:id", processHandler.DeleteProcessHandler)
 		e.POST("/api/process/:id/start", processHandler.StartProcessHandler)
 		e.POST("/api/process/:id/stop", processHandler.StopProcessHandler)
+		e.POST("/api/process/:id/restart", processHandler.RestartProcessHandler)
 		e.GET("/api/process/:id/logstream", processHandler.GetProcesseLogsHandler)
 		e.GET("/ws", websocket.HandleWebSocket)
 

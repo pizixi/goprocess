@@ -174,10 +174,29 @@ input[type="text"], input[type="number"] {
     width: 100%;
 }
 
-.search-container i {
+.search-container svg,
+.search-container .inline-svg {
     position: absolute;
     right: 8px;
     color: #6c757d;
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+
+.btn-svg {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    vertical-align: -2px;
+}
+
+.btn-svg svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    stroke: currentColor;
 }
 
 .terminal {

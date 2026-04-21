@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件管理</title>
-    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"> -->
-    <link href="/static/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="/static/icons.js"></script>
     <style>
         :root {
             --primary-color: #66BB6A; /* 更柔和的绿色 */
@@ -65,6 +64,22 @@
             gap: 0.5rem;
             transition: all 0.3s ease;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-icon {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+            stroke: currentColor;
         }
 
         .upload-btn {
@@ -134,13 +149,61 @@
         }
 
         .file-icon {
-            font-size: 1.2rem; /* 稍微减小图标大小 */
+            width: 24px;
+            height: 24px;
             margin-right: 0.8rem; /* 减小右边距 */
             color: var(--primary-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 24px;
         }
 
         .file-icon.folder {
             color: #FFA000; /* 更柔和的文件夹图标颜色 */
+        }
+
+        .file-icon.image {
+            color: #0284c7;
+        }
+
+        .file-icon.audio {
+            color: #7c3aed;
+        }
+
+        .file-icon.video {
+            color: #dc2626;
+        }
+
+        .file-icon.pdf {
+            color: #b91c1c;
+        }
+
+        .file-icon.word {
+            color: #2563eb;
+        }
+
+        .file-icon.excel {
+            color: #15803d;
+        }
+
+        .file-icon.powerpoint {
+            color: #c2410c;
+        }
+
+        .file-icon.archive {
+            color: #92400e;
+        }
+
+        .file-icon.code {
+            color: #0f766e;
+        }
+
+        .file-icon svg {
+            width: 24px;
+            height: 24px;
+            display: block;
+            stroke: currentColor;
         }
 
         .file-name {
@@ -171,6 +234,26 @@
             padding: 0.2rem; /* 减小按钮内边距 */
             border-radius: 4px;
             transition: all 0.3s ease;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+            stroke: currentColor;
         }
 
         .action-btn:hover {
@@ -316,8 +399,15 @@
             }
 
             .file-icon {
-                font-size: 1rem;
+                width: 20px;
+                height: 20px;
+                flex-basis: 20px;
                 margin-right: 0.5rem;
+            }
+
+            .file-icon svg {
+                width: 20px;
+                height: 20px;
             }
 
             .file-name {
@@ -332,14 +422,7 @@
 
         /* 添加悬停效果以显示完整文件名 */
         .file-name:hover {
-            white-space: normal;
-            word-break: break-all;
-            position: relative;
-            z-index: 1;
-            background-color: var(--secondary-color);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border-radius: 4px;
-            padding: 0.2rem;
+            color: var(--hover-color);
         }
 
         /* 添加一些额外的美化 */
@@ -386,11 +469,11 @@
             <h2>文件管理</h2>
             <div style="display: flex; gap: 1rem;">
                 <button class="btn upload-btn" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-upload"></i>
+                    <span class="btn-icon" data-svg-icon="upload"></span>
                     上传文件
                 </button>
                 <button class="btn create-folder-btn" onclick="showCreateFolderDialog()">
-                    <i class="fas fa-folder-plus"></i>
+                    <span class="btn-icon" data-svg-icon="folderPlus"></span>
                     新建文件夹
                 </button>
             </div>
@@ -431,6 +514,27 @@
 
     <script>
         let currentPath = '';
+
+        const extensionIconMap = {
+            image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
+            audio: ['mp3', 'wav', 'flac', 'aac', 'ogg'],
+            video: ['mp4', 'avi', 'mov', 'mkv', 'webm'],
+            pdf: ['pdf'],
+            word: ['doc', 'docx'],
+            excel: ['xls', 'xlsx', 'csv'],
+            powerpoint: ['ppt', 'pptx'],
+            archive: ['zip', 'rar', '7z', 'tar', 'gz'],
+            code: ['js', 'html', 'css', 'py', 'java', 'go', 'json', 'xml', 'sql', 'sh', 'bat', 'ps1']
+        };
+
+        function getFileIconName(file) {
+            if (file.isDirectory) return 'folder';
+            const extension = (file.name.split('.').pop() || '').toLowerCase();
+            for (const [iconName, extensions] of Object.entries(extensionIconMap)) {
+                if (extensions.includes(extension)) return iconName;
+            }
+            return 'fileText';
+        }
 
         // 初始化页面
         window.onload = () => {
@@ -509,52 +613,21 @@
             const item = document.createElement('div');
             item.className = 'file-item';
 
-            const icon = document.createElement('i');
-            // icon.className = `file-icon fas ${file.isDirectory ? 'fa-folder folder' : 'fa-file'}`;
-            if (file.isDirectory) {
-                icon.className = 'file-icon fas fa-folder folder';
-            } else {
-                icon.className = 'file-icon fas fa-file';
-                // 根据文件扩展名添加特定图标
-                const extension = file.name.split('.').pop().toLowerCase();
-                switch (extension) {
-                    case 'jpg': case 'jpeg': case 'png': case 'gif':
-                        icon.className += ' fa-file-image';
-                        break;
-                    case 'mp3': case 'wav':
-                        icon.className += ' fa-file-audio';
-                        break;
-                    case 'mp4': case 'avi': case 'mov':
-                        icon.className += ' fa-file-video';
-                        break;
-                    case 'pdf':
-                        icon.className += ' fa-file-pdf';
-                        break;
-                    case 'doc': case 'docx':
-                        icon.className += ' fa-file-word';
-                        break;
-                    case 'xls': case 'xlsx':
-                        icon.className += ' fa-file-excel';
-                        break;
-                    case 'ppt': case 'pptx':
-                        icon.className += ' fa-file-powerpoint';
-                        break;
-                    case 'zip': case 'rar': case '7z':
-                        icon.className += ' fa-file-archive';
-                        break;
-                    case 'js': case 'html': case 'css': case 'py': case 'java':
-                        icon.className += ' fa-file-code';
-                        break;
-                    // 可以根据需要添加更多文件类型
-                }
-            }            
+            const iconName = getFileIconName(file);
+            const icon = document.createElement('span');
+            icon.className = `file-icon ${iconName}`;
+            if (file.isDirectory) icon.classList.add('folder');
+            icon.innerHTML = gpmIcons.raw(iconName);
+
             const name = document.createElement('div');
             name.className = 'file-name';
             name.textContent = file.name;
+            name.title = file.name;
 
             const size = document.createElement('div'); // 添加文件大小显示
             size.className = 'file-size';
             size.textContent = formatFileSize(file.size); // 使用格式化函数
+            size.title = size.textContent;
 
             const actions = document.createElement('div');
             actions.className = 'file-actions';
@@ -569,12 +642,12 @@
             } else if (file.isDirectory) {
                 item.onclick = () => navigateToPath(currentPath ? `${currentPath}/${file.name}` : file.name);
                 
-                const openBtn = createActionButton('fa-folder-open', '打开');
+                const openBtn = createActionButton('folderOpen', '打开');
                 actions.appendChild(openBtn);
 
                 // 仅当不在根目录时显示删除按钮
                 if (currentPath !== '') {
-                    const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                    const deleteBtn = createActionButton('delete', '删除');
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
                         deleteFileOrFolder(file.name, true);
@@ -582,7 +655,7 @@
                     actions.appendChild(deleteBtn);
                 }
             } else {
-                const downloadBtn = createActionButton('fa-download', '下载');
+                const downloadBtn = createActionButton('download', '下载');
                 downloadBtn.onclick = (e) => {
                     e.stopPropagation();
                     downloadFile(file.name);
@@ -590,7 +663,7 @@
                 actions.appendChild(downloadBtn);
                 // 仅当不在根目录时显示删除按钮
                 if (currentPath !== '') {
-                    const deleteBtn = createActionButton('fa-trash-alt', '删除');
+                    const deleteBtn = createActionButton('delete', '删除');
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
                         deleteFileOrFolder(file.name, false);
@@ -607,7 +680,7 @@
             const btn = document.createElement('button');
             btn.className = 'action-btn';
             btn.title = title;
-            btn.innerHTML = `<i class="fas ${icon}"></i>`;
+            btn.innerHTML = gpmIcons.icon(icon, 'action-icon');
             return btn;
         }
 

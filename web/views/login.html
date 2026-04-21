@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goprocess Login</title>
     <link rel="icon" href="static/images/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="/static/font-awesome/5.15.4/css/all.min.css">
+    <script src="/static/icons.js"></script>
     <style>
 
         :root {
@@ -114,13 +114,24 @@
             margin-bottom: 1.5rem;
         }
 
-        .input-group i {
+        .input-icon {
             position: absolute;
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
             color: rgba(255, 255, 255, 0.7);
-            font-size: 1.2rem;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            display: block;
         }
 
         input {
@@ -212,9 +223,12 @@
             background-color: rgba(255, 255, 255, 0.2);
         }
 
-        .social-icon i {
+        .social-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
             color: #fff;
-            font-size: 1.2rem;
+            display: block;
         }
     </style>
 </head>
@@ -227,22 +241,17 @@
         {{end}}
         <form action="/login" method="POST">
             <div class="input-group">
-                <i class="fas fa-user"></i>
+                <span class="input-icon" data-svg-icon="user"></span>
                 <input type="text" id="username" name="username" required placeholder="Username">
             </div>
             
             <div class="input-group">
-                <i class="fas fa-lock"></i>
+                <span class="input-icon" data-svg-icon="lock"></span>
                 <input type="password" id="password" name="password" required placeholder="Password">
             </div>
             
             <input type="submit" value="登录">
         </form>
-        <!-- <div class="social-login">
-            <div class="social-icon"><i class="fab fa-facebook-f"></i></div>
-            <div class="social-icon"><i class="fab fa-google"></i></div>
-            <div class="social-icon"><i class="fab fa-twitter"></i></div>
-        </div> -->
     </div>
 
     <!-- <script>
