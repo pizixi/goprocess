@@ -171,44 +171,96 @@
         .process-status {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
-            padding: 5px 10px;
+            justify-content: center;
+            gap: 8px;
+            min-width: 88px;
+            height: 28px;
+            padding: 0 12px;
             border-radius: 999px;
+            border: 1px solid transparent;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), 0 6px 14px rgba(15, 23, 42, 0.08);
             font-size: 13px;
             font-weight: 700;
             line-height: 1;
             white-space: nowrap;
         }
 
+        .status-symbol {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.68);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+            flex: 0 0 auto;
+        }
+
         .process-status svg {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             stroke: currentColor;
         }
 
+        .status-label {
+            letter-spacing: 0.01em;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+        }
+
         .status-running {
-            background: #dcfce7;
-            color: #166534;
+            background: linear-gradient(180deg, #dff8e7 0%, #bceccf 100%);
+            color: #0f6a35;
+            border-color: #7ed7a1;
         }
 
         .status-stopped {
-            background: #e2e8f0;
-            color: #475569;
+            background: linear-gradient(180deg, #eef3f8 0%, #d8e2ec 100%);
+            color: #334155;
+            border-color: #b9c7d6;
         }
 
         .status-starting {
-            background: #fef3c7;
-            color: #b45309;
+            background: linear-gradient(180deg, #fff2b9 0%, #ffd96f 100%);
+            color: #8a4b00;
+            border-color: #f0bc3e;
         }
 
         .status-stopping {
-            background: #fee2e2;
-            color: #b91c1c;
+            background: linear-gradient(180deg, #ffd7d7 0%, #ffb1b1 100%);
+            color: #991b1b;
+            border-color: #f18a8a;
         }
 
         .status-error {
-            background: #fee2e2;
-            color: #b91c1c;
+            background: linear-gradient(180deg, #ffd0d8 0%, #ff9aaa 100%);
+            color: #8f1235;
+            border-color: #f56b83;
+        }
+
+        .status-running .status-symbol {
+            background: rgba(15, 106, 53, 0.18);
+        }
+
+        .status-stopped .status-symbol {
+            background: rgba(51, 65, 85, 0.16);
+        }
+
+        .status-starting .status-symbol {
+            background: rgba(138, 75, 0, 0.18);
+        }
+
+        .status-stopping .status-symbol {
+            background: rgba(153, 27, 27, 0.16);
+        }
+
+        .status-error .status-symbol {
+            background: rgba(143, 18, 53, 0.16);
+        }
+
+        .status-starting .status-symbol svg,
+        .status-stopping .status-symbol svg {
+            animation: status-spin 1.1s linear infinite;
         }
 
         .action-buttons {
@@ -262,6 +314,16 @@
 
         .action-delete {
             color: #be123c;
+        }
+
+        @keyframes status-spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .cell-ellipsis {
@@ -547,26 +609,34 @@ layui.use(['table', 'form', 'layer'], function () {
 
     function statusTpl(d) {
         var meta = getStatusMeta(d.Status);
-        return '<span class="process-status ' + meta.className + '" title="' + escapeHtml(meta.label) + '">' + svgIcons[meta.icon] + '<span>' + meta.label + '</span></span>';
+        return '<span class="process-status ' + meta.className + '" title="' + escapeHtml(meta.label) + '"><span class="status-symbol">' + svgIcons[meta.icon] + '</span><span class="status-label">' + meta.label + '</span></span>';
     }
 
-    var actionToolbar = [
-        '<div class="action-buttons">',
-        createActionButton('start', '启动', 'start', 'action-start'),
-        createActionButton('stop', '停止', 'stop', 'action-stop'),
-        createActionButton('restart', '重启', 'restart', 'action-restart'),
-        createActionButton('log', '日志', 'log', 'action-log'),
-        createActionButton('edit', '编辑', 'edit', 'action-edit'),
-        createActionButton('del', '删除', 'delete', 'action-delete'),
-        '</div>'
-    ].join('');
+    function getPrimaryActionConfig(status) {
+        return String(status || '').toLowerCase() === 'running'
+            ? { eventName: 'stop', tip: '停止', iconName: 'stop', className: 'action-stop' }
+            : { eventName: 'start', tip: '启动', iconName: 'start', className: 'action-start' };
+    }
+
+    function actionToolbarTpl(d) {
+        var primaryAction = getPrimaryActionConfig(d.Status);
+        return [
+            '<div class="action-buttons">',
+            createActionButton(primaryAction.eventName, primaryAction.tip, primaryAction.iconName, primaryAction.className),
+            createActionButton('restart', '重启', 'restart', 'action-restart'),
+            createActionButton('log', '日志', 'log', 'action-log'),
+            createActionButton('edit', '编辑', 'edit', 'action-edit'),
+            createActionButton('del', '删除', 'delete', 'action-delete'),
+            '</div>'
+        ].join('');
+    }
 
     function getCols() {
         if (window.innerWidth < 768) {
             return [[
                 { field: 'Name', title: '进程名', minWidth: 132, sort: true, templet: function (d) { return renderEllipsisCell(d.Name); } },
                 { field: 'Status', title: '状态', width: 132, sort: true, align: 'center', templet: statusTpl },
-                { fixed: 'right', title: '操作', align: 'center', width: 296, toolbar: actionToolbar }
+                { fixed: 'right', title: '操作', align: 'center', width: 296, templet: actionToolbarTpl }
             ]];
         }
 
@@ -576,7 +646,7 @@ layui.use(['table', 'form', 'layer'], function () {
             { field: 'Command', title: '命令行', minWidth: 320, sort: true, templet: function (d) { return renderEllipsisCell(d.Command); } },
             { field: 'PID', title: 'PID', width: 96, sort: true, align: 'center' },
             { field: 'Status', title: '状态', width: 136, sort: true, align: 'center', templet: statusTpl },
-            { fixed: 'right', title: '操作', align: 'center', width: 312, toolbar: actionToolbar }
+            { fixed: 'right', title: '操作', align: 'center', width: 312, templet: actionToolbarTpl }
         ]];
     }
 
