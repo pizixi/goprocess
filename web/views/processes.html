@@ -51,11 +51,19 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 9px 12px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
             border: 1px solid var(--border);
             border-radius: 14px;
-            background: var(--panel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
             box-shadow: var(--shadow);
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+            min-width: 86px;
         }
 
         .page-title h1 {
@@ -63,6 +71,7 @@
             font-size: 18px;
             line-height: 1.2;
             font-weight: 700;
+            white-space: nowrap;
         }
 
         #addProcessBtn {
@@ -80,6 +89,7 @@
             color: var(--primary);
             font-size: 14px;
             font-weight: 700;
+            flex: 0 0 auto;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
         }
@@ -136,6 +146,137 @@
             background: var(--panel);
             box-shadow: var(--shadow);
             overflow: hidden;
+        }
+
+        .filter-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 640px;
+            min-width: 320px;
+            flex-wrap: wrap;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .filter-field {
+            display: flex;
+            min-width: 116px;
+            flex: 0 0 128px;
+        }
+
+        .filter-field-keyword {
+            flex: 1 1 260px;
+            min-width: 220px;
+        }
+
+        .filter-field label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .filter-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-input-wrap svg {
+            position: absolute;
+            left: 11px;
+            width: 17px;
+            height: 17px;
+            color: #64748b;
+            stroke: currentColor;
+            pointer-events: none;
+        }
+
+        .filter-input-wrap input,
+        .filter-field select {
+            width: 100%;
+            height: 36px;
+            border: 1px solid #d8e1ec;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f172a;
+            font-size: 14px;
+            outline: none;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
+        .filter-input-wrap input {
+            padding: 0 12px 0 36px;
+        }
+
+        .filter-field select {
+            padding: 0 10px;
+        }
+
+        .filter-input-wrap input:focus,
+        .filter-field select:focus {
+            border-color: rgba(15, 118, 110, 0.52);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            margin-left: 0;
+        }
+
+        .filter-count {
+            color: #64748b;
+            font-size: 13px;
+            white-space: nowrap;
+            height: 28px;
+            line-height: 28px;
+            padding: 0 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.92);
+        }
+
+        .filter-reset {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid #d8e1ec;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+        }
+
+        .filter-reset:hover {
+            border-color: rgba(15, 118, 110, 0.42);
+            background: #f0fdfa;
+            color: #115e59;
+        }
+
+        .filter-reset svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
         }
 
         .layui-table-view {
@@ -333,6 +474,10 @@
             white-space: nowrap;
         }
 
+        .cell-muted {
+            color: #94a3b8;
+        }
+
         .form-shell {
             min-height: 100%;
             padding: 20px 20px 8px;
@@ -396,7 +541,29 @@
             }
 
             .page-toolbar {
-                align-items: center;
+                align-items: stretch;
+            }
+
+            .filter-panel {
+                flex: 1 1 100%;
+                min-width: 0;
+                flex-wrap: wrap;
+                align-items: stretch;
+                gap: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #eef2f7;
+            }
+
+            .filter-field,
+            .filter-field-keyword {
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+
+            .filter-actions {
+                width: 100%;
+                justify-content: space-between;
+                margin-left: 0;
             }
 
             .layui-table-cell {
@@ -433,6 +600,67 @@
         <div class="page-title">
             <h1>进程管理</h1>
         </div>
+
+        <div class="filter-panel" id="processFilterPanel">
+            <div class="filter-field filter-field-keyword">
+                <label for="processKeyword">关键词</label>
+                <div class="filter-input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6.5"></circle>
+                        <path d="m16 16 4 4"></path>
+                    </svg>
+                    <input type="search" id="processKeyword" autocomplete="off" placeholder="搜索进程、命令、目录、用户">
+                </div>
+            </div>
+            <div class="filter-field">
+                <label for="processSearchField">搜索范围</label>
+                <select id="processSearchField">
+                    <option value="all">全部字段</option>
+                    <option value="Name">进程名</option>
+                    <option value="Command">命令行</option>
+                    <option value="WorkDir">工作目录</option>
+                    <option value="User">用户</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="processStatusFilter">状态</label>
+                <select id="processStatusFilter">
+                    <option value="all">全部状态</option>
+                    <option value="running">运行中</option>
+                    <option value="stopped">已停止</option>
+                    <option value="starting">启动中</option>
+                    <option value="stopping">停止中</option>
+                    <option value="error">异常</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="processAutoStartFilter">自启</label>
+                <select id="processAutoStartFilter">
+                    <option value="all">全部</option>
+                    <option value="on">开机自启</option>
+                    <option value="off">非自启</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="processUserFilter">用户</label>
+                <select id="processUserFilter">
+                    <option value="all">全部</option>
+                    <option value="has">指定用户</option>
+                    <option value="empty">未指定</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <span class="filter-count" id="processFilterCount">0 / 0</span>
+                <button type="button" class="filter-reset" id="resetProcessFilters" title="重置筛选" aria-label="重置筛选">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+                        <path d="M20 4v6h-6"></path>
+                    </svg>
+                    <span>重置</span>
+                </button>
+            </div>
+        </div>
+
         <button type="button" id="addProcessBtn" title="添加进程" aria-label="添加进程">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14"></path>
@@ -456,6 +684,7 @@ layui.use(['table', 'form', 'layer'], function () {
 
     var TABLE_ID = 'processTable';
     var PAGE_LIMITS = [20, 30, 50, 80];
+    var rawProcesses = [];
     var allProcesses = [];
     var tableInitialized = false;
     var pageState = {
@@ -469,6 +698,13 @@ layui.use(['table', 'form', 'layer'], function () {
     var sortState = {
         field: DEFAULT_SORT.field,
         type: DEFAULT_SORT.type
+    };
+    var filterState = {
+        keyword: '',
+        field: 'all',
+        status: 'all',
+        autoStart: 'all',
+        user: 'all'
     };
     var tooltipIndex = null;
     var reconnectTimer = null;
@@ -597,6 +833,95 @@ layui.use(['table', 'form', 'layer'], function () {
         });
     }
 
+    function normalizeSearchText(value) {
+        return String(value == null ? '' : value).trim().toLowerCase();
+    }
+
+    function getProcessSearchText(process, field) {
+        if (field !== 'all') {
+            return normalizeSearchText(process[field]);
+        }
+
+        return [
+            process.ID,
+            process.Name,
+            process.Command,
+            process.WorkDir,
+            process.User,
+            process.Status,
+            process.PID,
+            process.AutoStart ? '开机自启 autostart yes' : '非自启 no'
+        ].map(normalizeSearchText).join(' ');
+    }
+
+    function filterProcesses(processes) {
+        var keyword = normalizeSearchText(filterState.keyword);
+        return (processes || []).filter(function (process) {
+            var status = normalizeSearchText(process.Status);
+            var hasUser = normalizeSearchText(process.User) !== '';
+
+            if (keyword && getProcessSearchText(process, filterState.field).indexOf(keyword) === -1) {
+                return false;
+            }
+            if (filterState.status !== 'all' && status !== filterState.status) {
+                return false;
+            }
+            if (filterState.autoStart === 'on' && !process.AutoStart) {
+                return false;
+            }
+            if (filterState.autoStart === 'off' && process.AutoStart) {
+                return false;
+            }
+            if (filterState.user === 'has' && !hasUser) {
+                return false;
+            }
+            if (filterState.user === 'empty' && hasUser) {
+                return false;
+            }
+            return true;
+        });
+    }
+
+    function updateProcessFilterCount() {
+        var countElement = document.getElementById('processFilterCount');
+        if (countElement) {
+            countElement.textContent = allProcesses.length + ' / ' + rawProcesses.length;
+        }
+    }
+
+    function refreshProcessTable(options) {
+        options = options || {};
+        allProcesses = sortProcesses(filterProcesses(rawProcesses));
+        updateProcessFilterCount();
+
+        if (!tableInitialized) {
+            initTable();
+            return;
+        }
+
+        var targetPage = pageState.curr;
+        if (options.resetToFirstPage) {
+            targetPage = 1;
+        }
+        if (options.page && options.page.curr) {
+            targetPage = options.page.curr;
+        }
+        if (options.focusId) {
+            var index = allProcesses.findIndex(function (item) {
+                return item.ID === options.focusId;
+            });
+            if (index !== -1) {
+                targetPage = Math.floor(index / pageState.limit) + 1;
+            }
+        }
+
+        var reloadOptions = Object.assign({}, options);
+        delete reloadOptions.resetToFirstPage;
+        delete reloadOptions.focusId;
+        reloadOptions.page = getPageOptions(targetPage);
+        reloadTable(reloadOptions);
+    }
+
     function createActionButton(eventName, tip, iconName, extraClass) {
         return '<button type="button" class="action-icon-btn ' + extraClass + '" lay-event="' + eventName + '" data-tip="' + tip + '" title="' + tip + '" aria-label="' + tip + '">' + svgIcons[iconName] + '</button>';
     }
@@ -605,6 +930,14 @@ layui.use(['table', 'form', 'layer'], function () {
         var text = value == null ? '' : String(value);
         var escaped = escapeHtml(text);
         return '<span class="cell-ellipsis" title="' + escaped + '">' + escaped + '</span>';
+    }
+
+    function renderUserCell(value) {
+        var text = String(value == null ? '' : value).trim();
+        if (!text) {
+            return '<span class="cell-ellipsis cell-muted" title="未指定">-</span>';
+        }
+        return renderEllipsisCell(text);
     }
 
     function statusTpl(d) {
@@ -635,6 +968,7 @@ layui.use(['table', 'form', 'layer'], function () {
         if (window.innerWidth < 768) {
             return [[
                 { field: 'Name', title: '进程名', minWidth: 132, sort: true, templet: function (d) { return renderEllipsisCell(d.Name); } },
+                { field: 'User', title: '用户', width: 112, sort: true, templet: function (d) { return renderUserCell(d.User); } },
                 { field: 'Status', title: '状态', width: 132, sort: true, align: 'center', templet: statusTpl },
                 { fixed: 'right', title: '操作', align: 'center', width: 296, templet: actionToolbarTpl }
             ]];
@@ -644,6 +978,7 @@ layui.use(['table', 'form', 'layer'], function () {
             { field: 'ID', title: 'ID', width: 80, sort: true, align: 'center' },
             { field: 'Name', title: '进程名', minWidth: 140, sort: true, templet: function (d) { return renderEllipsisCell(d.Name); } },
             { field: 'Command', title: '命令行', minWidth: 320, sort: true, templet: function (d) { return renderEllipsisCell(d.Command); } },
+            { field: 'User', title: '用户', width: 132, sort: true, templet: function (d) { return renderUserCell(d.User); } },
             { field: 'PID', title: 'PID', width: 96, sort: true, align: 'center' },
             { field: 'Status', title: '状态', width: 136, sort: true, align: 'center', templet: statusTpl },
             { fixed: 'right', title: '操作', align: 'center', width: 312, templet: actionToolbarTpl }
@@ -723,33 +1058,12 @@ layui.use(['table', 'form', 'layer'], function () {
 
     async function loadProcesses(options) {
         var result = await requestJSON('/api/processes');
-        allProcesses = sortProcesses(result.data || []);
-
-        if (!tableInitialized) {
-            initTable();
-            return;
-        }
-
-        var targetPage = pageState.curr;
-        if (options && options.resetToFirstPage) {
-            targetPage = 1;
-        }
-        if (options && options.focusId) {
-            var index = allProcesses.findIndex(function (item) {
-                return item.ID === options.focusId;
-            });
-            if (index !== -1) {
-                targetPage = Math.floor(index / pageState.limit) + 1;
-            }
-        }
-
-        reloadTable({
-            page: getPageOptions(targetPage)
-        });
+        rawProcesses = result.data || [];
+        refreshProcessTable(options);
     }
 
     function updateProcessStatus(process) {
-        var index = allProcesses.findIndex(function (item) {
+        var index = rawProcesses.findIndex(function (item) {
             return item.ID === process.ID;
         });
 
@@ -760,9 +1074,8 @@ layui.use(['table', 'form', 'layer'], function () {
             return;
         }
 
-        allProcesses[index] = Object.assign({}, allProcesses[index], process);
-        allProcesses = sortProcesses(allProcesses);
-        reloadTable();
+        rawProcesses[index] = Object.assign({}, rawProcesses[index], process);
+        refreshProcessTable();
     }
 
     function closeTooltip() {
@@ -809,6 +1122,58 @@ layui.use(['table', 'form', 'layer'], function () {
             if (event.target.closest('.action-icon-btn')) {
                 closeTooltip();
             }
+        });
+    }
+
+    function bindProcessFilterEvents() {
+        var keywordInput = document.getElementById('processKeyword');
+        var fieldSelect = document.getElementById('processSearchField');
+        var statusSelect = document.getElementById('processStatusFilter');
+        var autoStartSelect = document.getElementById('processAutoStartFilter');
+        var userSelect = document.getElementById('processUserFilter');
+        var resetButton = document.getElementById('resetProcessFilters');
+
+        var applyKeywordFilter = debounce(function () {
+            filterState.keyword = keywordInput.value;
+            refreshProcessTable({ resetToFirstPage: true });
+        }, 180);
+
+        keywordInput.addEventListener('input', applyKeywordFilter);
+
+        fieldSelect.addEventListener('change', function () {
+            filterState.field = fieldSelect.value;
+            refreshProcessTable({ resetToFirstPage: true });
+        });
+
+        statusSelect.addEventListener('change', function () {
+            filterState.status = statusSelect.value;
+            refreshProcessTable({ resetToFirstPage: true });
+        });
+
+        autoStartSelect.addEventListener('change', function () {
+            filterState.autoStart = autoStartSelect.value;
+            refreshProcessTable({ resetToFirstPage: true });
+        });
+
+        userSelect.addEventListener('change', function () {
+            filterState.user = userSelect.value;
+            refreshProcessTable({ resetToFirstPage: true });
+        });
+
+        resetButton.addEventListener('click', function () {
+            filterState = {
+                keyword: '',
+                field: 'all',
+                status: 'all',
+                autoStart: 'all',
+                user: 'all'
+            };
+            keywordInput.value = '';
+            fieldSelect.value = filterState.field;
+            statusSelect.value = filterState.status;
+            autoStartSelect.value = filterState.autoStart;
+            userSelect.value = filterState.user;
+            refreshProcessTable({ resetToFirstPage: true });
         });
     }
 
@@ -1171,8 +1536,7 @@ layui.use(['table', 'form', 'layer'], function () {
             field: DEFAULT_SORT.field,
             type: DEFAULT_SORT.type
         };
-        allProcesses = sortProcesses(allProcesses);
-        reloadTable({
+        refreshProcessTable({
             initSort: getInitSort(),
             page: getPageOptions(1)
         });
@@ -1195,6 +1559,7 @@ layui.use(['table', 'form', 'layer'], function () {
     }, 160));
 
     bindTooltipEvents();
+    bindProcessFilterEvents();
     connectWebSocket();
     loadProcesses({ resetToFirstPage: true }).catch(function (error) {
         layer.msg(error.message || '加载进程列表失败', { icon: 2 });

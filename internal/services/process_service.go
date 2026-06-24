@@ -119,13 +119,44 @@ func (ps *ProcessService) StartProcessById(id uint) {
 	// 手动关闭日志文件，确保日志写入并归档
 	defer logFile.Close()
 
+retryLoop:
 	for retryCount < rp.RetryCount {
 		cmd := kexec.CommandString(rp.Command)
 		cmd.Dir = rp.WorkDir
 
-		// 在Windows下隐藏命令行窗口
-		if runtime.GOOS == "windows" {
-			utils.SetSysProcAttr(cmd.Cmd)
+		var cleanupProcessUser func()
+		var err error
+		var lastTokenWaitLog time.Time
+		tokenWaitStarted := time.Now()
+		for {
+			cleanupProcessUser, err = utils.ConfigureProcessUser(cmd.Cmd, rp.User)
+			if err == nil {
+				break
+			}
+			if !utils.IsProcessUserTokenUnavailable(err) {
+				log.Printf("Error configuring user %q for process %d: %v", rp.User, id, err)
+				retryCount++
+				time.Sleep(time.Duration(retryCount) * time.Second)
+				continue retryLoop
+			}
+
+			latestProcess, exists := ps.PM.GetProcess(id)
+			if !exists {
+				log.Printf("Process %d was removed while waiting for user token", id)
+				return
+			}
+			if latestProcess.ManualStop {
+				log.Printf("Process %d was manually stopped while waiting for user %q token", id, rp.User)
+				ps.PM.UpdateProcessStatus(id, "stopped", 0)
+				websocket.BroadcastStatus(*latestProcess)
+				return
+			}
+
+			if lastTokenWaitLog.IsZero() || time.Since(lastTokenWaitLog) >= 30*time.Second {
+				log.Printf("Waiting for user %q token before starting process %d, elapsed %s", rp.User, id, time.Since(tokenWaitStarted).Round(time.Second))
+				lastTokenWaitLog = time.Now()
+			}
+			time.Sleep(5 * time.Second)
 		}
 
 		// logDir := filepath.Join("logs", fmt.Sprintf("process_%d", rp.ID))
@@ -153,10 +184,16 @@ func (ps *ProcessService) StartProcessById(id uint) {
 		ps.PM.SetCommand(rp.ID, cmd)
 
 		if err := cmd.Start(); err != nil {
+			if cleanupProcessUser != nil {
+				cleanupProcessUser()
+			}
 			log.Printf("Error starting process %d: %v", id, err)
 			retryCount++
 			time.Sleep(time.Duration(retryCount) * time.Second)
 			continue
+		}
+		if cleanupProcessUser != nil {
+			cleanupProcessUser()
 		}
 
 		ps.PM.UpdateProcessStatus(id, "running", cmd.Process.Pid)

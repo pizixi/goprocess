@@ -51,11 +51,19 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 9px 12px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
             border: 1px solid var(--border);
             border-radius: 14px;
-            background: var(--panel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
             box-shadow: var(--shadow);
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+            min-width: 86px;
         }
 
         .page-title h1 {
@@ -63,6 +71,7 @@
             font-size: 18px;
             line-height: 1.2;
             font-weight: 700;
+            white-space: nowrap;
         }
 
         #addTaskBtn {
@@ -80,6 +89,7 @@
             color: var(--primary);
             font-size: 14px;
             font-weight: 700;
+            flex: 0 0 auto;
             cursor: pointer;
             transition: transform 0.16s ease, color 0.16s ease, opacity 0.16s ease;
         }
@@ -136,6 +146,137 @@
             background: var(--panel);
             box-shadow: var(--shadow);
             overflow: hidden;
+        }
+
+        .filter-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 640px;
+            min-width: 320px;
+            flex-wrap: wrap;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .filter-field {
+            display: flex;
+            min-width: 116px;
+            flex: 0 0 128px;
+        }
+
+        .filter-field-keyword {
+            flex: 1 1 260px;
+            min-width: 220px;
+        }
+
+        .filter-field label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .filter-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-input-wrap svg {
+            position: absolute;
+            left: 11px;
+            width: 17px;
+            height: 17px;
+            color: #64748b;
+            stroke: currentColor;
+            pointer-events: none;
+        }
+
+        .filter-input-wrap input,
+        .filter-field select {
+            width: 100%;
+            height: 36px;
+            border: 1px solid #d8e1ec;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f172a;
+            font-size: 14px;
+            outline: none;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+        }
+
+        .filter-input-wrap input {
+            padding: 0 12px 0 36px;
+        }
+
+        .filter-field select {
+            padding: 0 10px;
+        }
+
+        .filter-input-wrap input:focus,
+        .filter-field select:focus {
+            border-color: rgba(15, 118, 110, 0.52);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            margin-left: 0;
+        }
+
+        .filter-count {
+            color: #64748b;
+            font-size: 13px;
+            white-space: nowrap;
+            height: 28px;
+            line-height: 28px;
+            padding: 0 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.92);
+        }
+
+        .filter-reset {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid #d8e1ec;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+        }
+
+        .filter-reset:hover {
+            border-color: rgba(15, 118, 110, 0.42);
+            background: #f0fdfa;
+            color: #115e59;
+        }
+
+        .filter-reset svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
         }
 
         .layui-table-view {
@@ -228,6 +369,94 @@
             white-space: nowrap;
         }
 
+        .command-cell {
+            font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
+            color: #1f2937;
+            cursor: text;
+        }
+
+        .command-popover {
+            position: fixed;
+            z-index: 19891030;
+            display: none;
+            width: min(720px, calc(100vw - 24px));
+            max-height: min(420px, calc(100vh - 24px));
+            border: 1px solid #d7dee8;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+            color: #0f172a;
+            overflow: hidden;
+        }
+
+        .command-popover.is-open {
+            display: block;
+        }
+
+        .command-popover__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 42px;
+            padding: 8px 10px 8px 14px;
+            border-bottom: 1px solid #e7edf5;
+            background: #f8fafc;
+        }
+
+        .command-popover__title {
+            min-width: 0;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .command-popover__copy {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 1px solid #d8e1ec;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #0f766e;
+            cursor: pointer;
+            transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+        }
+
+        .command-popover__copy:hover {
+            border-color: rgba(15, 118, 110, 0.42);
+            background: #ecfdf5;
+            color: #115e59;
+        }
+
+        .command-popover__copy svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+        }
+
+        .command-popover__body {
+            max-height: min(377px, calc(100vh - 67px));
+            overflow: auto;
+            padding: 12px 14px 14px;
+        }
+
+        .command-popover__code {
+            margin: 0;
+            color: #111827;
+            font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+        }
+
         .form-shell {
             min-height: 100%;
             padding: 20px 20px 8px;
@@ -296,7 +525,29 @@
             }
 
             .page-toolbar {
-                align-items: center;
+                align-items: stretch;
+            }
+
+            .filter-panel {
+                flex: 1 1 100%;
+                min-width: 0;
+                flex-wrap: wrap;
+                align-items: stretch;
+                gap: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #eef2f7;
+            }
+
+            .filter-field,
+            .filter-field-keyword {
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+
+            .filter-actions {
+                width: 100%;
+                justify-content: space-between;
+                margin-left: 0;
             }
 
             .layui-table-cell {
@@ -333,6 +584,66 @@
         <div class="page-title">
             <h1>定时任务</h1>
         </div>
+
+        <div class="filter-panel" id="taskFilterPanel">
+            <div class="filter-field filter-field-keyword">
+                <label for="taskKeyword">关键词</label>
+                <div class="filter-input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6.5"></circle>
+                        <path d="m16 16 4 4"></path>
+                    </svg>
+                    <input type="search" id="taskKeyword" autocomplete="off" placeholder="搜索任务、表达式、目录、命令">
+                </div>
+            </div>
+            <div class="filter-field">
+                <label for="taskSearchField">搜索范围</label>
+                <select id="taskSearchField">
+                    <option value="all">全部字段</option>
+                    <option value="name">任务名</option>
+                    <option value="cron">定时表达式</option>
+                    <option value="workDir">工作目录</option>
+                    <option value="command">任务命令</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="taskStatusFilter">状态</label>
+                <select id="taskStatusFilter">
+                    <option value="all">全部状态</option>
+                    <option value="enabled">已启用</option>
+                    <option value="disabled">已禁用</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="taskTimeoutFilter">超时</label>
+                <select id="taskTimeoutFilter">
+                    <option value="all">全部</option>
+                    <option value="quick">不超过 1 分钟</option>
+                    <option value="hour">不超过 1 小时</option>
+                    <option value="long">超过 1 小时</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="taskCronFilter">表达式</label>
+                <select id="taskCronFilter">
+                    <option value="all">全部</option>
+                    <option value="standard">5 段表达式</option>
+                    <option value="seconds">含秒表达式</option>
+                    <option value="complex">复杂表达式</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <span class="filter-count" id="taskFilterCount">0 / 0</span>
+                <button type="button" class="filter-reset" id="resetTaskFilters" title="重置筛选" aria-label="重置筛选">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+                        <path d="M20 4v6h-6"></path>
+                    </svg>
+                    <span>重置</span>
+                </button>
+            </div>
+        </div>
+
         <button type="button" id="addTaskBtn" title="添加任务" aria-label="添加任务">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14"></path>
@@ -356,6 +667,7 @@ layui.use(['table', 'form', 'layer'], function () {
 
     var TABLE_ID = 'taskTable';
     var PAGE_LIMITS = [20, 30, 50, 80];
+    var rawTasks = [];
     var allTasks = [];
     var tableInitialized = false;
     var pageState = {
@@ -370,7 +682,18 @@ layui.use(['table', 'form', 'layer'], function () {
         field: DEFAULT_SORT.field,
         type: DEFAULT_SORT.type
     };
+    var filterState = {
+        keyword: '',
+        field: 'all',
+        status: 'all',
+        timeout: 'all',
+        cron: 'all'
+    };
     var tooltipIndex = null;
+    var commandPopover = null;
+    var commandPopoverCode = null;
+    var commandHideTimer = null;
+    var activeCommandCell = null;
 
     function debounce(fn, wait) {
         var timer = null;
@@ -456,6 +779,122 @@ layui.use(['table', 'form', 'layer'], function () {
         });
     }
 
+    function normalizeSearchText(value) {
+        return String(value == null ? '' : value).trim().toLowerCase();
+    }
+
+    function getTaskSearchText(task, field) {
+        if (field !== 'all') {
+            return normalizeSearchText(task[field]);
+        }
+
+        return [
+            task.ID,
+            task.name,
+            task.cron,
+            task.workDir,
+            task.command,
+            task.timeout,
+            task.isEnabled ? '启用 enabled' : '禁用 disabled'
+        ].map(normalizeSearchText).join(' ');
+    }
+
+    function getCronParts(cron) {
+        return String(cron || '').trim().split(/\s+/).filter(Boolean);
+    }
+
+    function matchesCronFilter(task) {
+        var cron = String(task.cron || '').trim();
+        var parts = getCronParts(cron);
+
+        if (filterState.cron === 'standard') {
+            return parts.length === 5;
+        }
+        if (filterState.cron === 'seconds') {
+            return parts.length >= 6;
+        }
+        if (filterState.cron === 'complex') {
+            return /[,/\-]/.test(cron);
+        }
+        return true;
+    }
+
+    function matchesTimeoutFilter(task) {
+        var timeout = Number(task.timeout) || 0;
+        if (filterState.timeout === 'quick') {
+            return timeout > 0 && timeout <= 60;
+        }
+        if (filterState.timeout === 'hour') {
+            return timeout > 0 && timeout <= 3600;
+        }
+        if (filterState.timeout === 'long') {
+            return timeout > 3600;
+        }
+        return true;
+    }
+
+    function filterTasks(tasks) {
+        var keyword = normalizeSearchText(filterState.keyword);
+        return (tasks || []).filter(function (task) {
+            if (keyword && getTaskSearchText(task, filterState.field).indexOf(keyword) === -1) {
+                return false;
+            }
+            if (filterState.status === 'enabled' && !task.isEnabled) {
+                return false;
+            }
+            if (filterState.status === 'disabled' && task.isEnabled) {
+                return false;
+            }
+            if (!matchesTimeoutFilter(task)) {
+                return false;
+            }
+            if (!matchesCronFilter(task)) {
+                return false;
+            }
+            return true;
+        });
+    }
+
+    function updateTaskFilterCount() {
+        var countElement = document.getElementById('taskFilterCount');
+        if (countElement) {
+            countElement.textContent = allTasks.length + ' / ' + rawTasks.length;
+        }
+    }
+
+    function refreshTaskTable(options) {
+        options = options || {};
+        allTasks = sortTasks(filterTasks(rawTasks));
+        updateTaskFilterCount();
+
+        if (!tableInitialized) {
+            initTable();
+            return;
+        }
+
+        var targetPage = pageState.curr;
+        if (options.resetToFirstPage) {
+            targetPage = 1;
+        }
+        if (options.page && options.page.curr) {
+            targetPage = options.page.curr;
+        }
+        if (options.focusId) {
+            var index = allTasks.findIndex(function (item) {
+                return item.ID === options.focusId;
+            });
+            if (index !== -1) {
+                targetPage = Math.floor(index / pageState.limit) + 1;
+            }
+        }
+
+        var reloadOptions = Object.assign({}, options);
+        delete reloadOptions.resetToFirstPage;
+        delete reloadOptions.focusId;
+        reloadOptions.page = getPageOptions(targetPage);
+        reloadTable(reloadOptions);
+    }
+
     var svgIcons = {
         run: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5.5v13l10-6.5-10-6.5Z"></path></svg>',
         log: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"></path><path d="M14 3.5V8h4"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>',
@@ -463,7 +902,8 @@ layui.use(['table', 'form', 'layer'], function () {
         delete: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M8 7l.8 13h6.4L16 7"></path><path d="M9.5 7l.6-3h3.8l.6 3"></path></svg>',
         save: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h12l2 2v14H5V4Z"></path><path d="M8 4v6h8"></path><path d="M8 20v-6h8v6"></path></svg>',
         close: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg>',
-        search: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>'
+        search: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>',
+        copy: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M5 15H4.8A1.8 1.8 0 0 1 3 13.2V4.8A1.8 1.8 0 0 1 4.8 3h8.4A1.8 1.8 0 0 1 15 4.8V5"></path></svg>'
     };
 
     function createActionButton(eventName, tip, iconName, extraClass) {
@@ -474,6 +914,12 @@ layui.use(['table', 'form', 'layer'], function () {
         var text = value == null ? '' : String(value);
         var escaped = escapeHtml(text);
         return '<span class="cell-ellipsis" title="' + escaped + '">' + escaped + '</span>';
+    }
+
+    function renderCommandCell(value, id) {
+        var text = value == null ? '' : String(value);
+        var escaped = escapeHtml(text);
+        return '<span class="cell-ellipsis command-cell" tabindex="0" data-task-id="' + escapeHtml(id) + '">' + escaped + '</span>';
     }
 
     function statusTpl(d) {
@@ -502,14 +948,15 @@ layui.use(['table', 'form', 'layer'], function () {
             { field: 'ID', title: 'ID', width: 80, sort: true, align: 'center' },
             { field: 'name', title: '任务名', minWidth: 138, sort: true, templet: function (d) { return renderEllipsisCell(d.name); } },
             { field: 'isEnabled', title: '状态', width: 120, sort: true, templet: statusTpl, unresize: true },
-            { field: 'cron', title: '定时表达式', minWidth: 200, sort: true, templet: function (d) { return renderEllipsisCell(d.cron); } },
+            { field: 'cron', title: '定时表达式', width: 152, sort: true, templet: function (d) { return renderEllipsisCell(d.cron); } },
             { field: 'workDir', title: '工作目录', minWidth: 220, sort: true, templet: function (d) { return renderEllipsisCell(d.workDir); } },
-            { field: 'command', title: '任务命令', minWidth: 320, sort: true, templet: function (d) { return renderEllipsisCell(d.command); } },
+            { field: 'command', title: '任务命令', minWidth: 430, sort: true, templet: function (d) { return renderCommandCell(d.command, d.ID); } },
             { fixed: 'right', title: '操作', align: 'center', width: 228, toolbar: actionToolbar }
         ]];
     }
 
     function handleTableDone(_, curr) {
+        closeCommandPopover();
         pageState.curr = curr || pageState.curr || 1;
         if (this.limit) {
             pageState.limit = this.limit;
@@ -583,41 +1030,149 @@ layui.use(['table', 'form', 'layer'], function () {
 
     async function loadTasks(options) {
         var result = await requestJSON('/api/tasks');
-        allTasks = sortTasks(result.data || []);
-
-        if (!tableInitialized) {
-            initTable();
-            return;
-        }
-
-        var targetPage = pageState.curr;
-        if (options && options.resetToFirstPage) {
-            targetPage = 1;
-        }
-        if (options && options.focusId) {
-            var index = allTasks.findIndex(function (item) {
-                return item.ID === options.focusId;
-            });
-            if (index !== -1) {
-                targetPage = Math.floor(index / pageState.limit) + 1;
-            }
-        }
-
-        reloadTable({
-            page: getPageOptions(targetPage)
-        });
+        rawTasks = result.data || [];
+        refreshTaskTable(options);
     }
 
     function updateTaskLocal(id, patch) {
-        var index = allTasks.findIndex(function (item) {
+        var index = rawTasks.findIndex(function (item) {
             return item.ID === id;
         });
         if (index === -1) {
             return;
         }
-        allTasks[index] = Object.assign({}, allTasks[index], patch);
-        allTasks = sortTasks(allTasks);
-        reloadTable();
+        rawTasks[index] = Object.assign({}, rawTasks[index], patch);
+        refreshTaskTable();
+    }
+
+    function getTaskById(id) {
+        var taskId = Number(id);
+        return rawTasks.find(function (item) {
+            return Number(item.ID) === taskId;
+        });
+    }
+
+    function getCommandTextFromCell(cell) {
+        var task = getTaskById(cell.getAttribute('data-task-id'));
+        if (task) {
+            return String(task.command || '');
+        }
+        return cell.textContent || '';
+    }
+
+    function ensureCommandPopover() {
+        if (commandPopover) {
+            return;
+        }
+
+        commandPopover = document.createElement('div');
+        commandPopover.className = 'command-popover';
+        commandPopover.innerHTML = [
+            '<div class="command-popover__header">',
+            '<div class="command-popover__title">任务命令</div>',
+            '<button type="button" class="command-popover__copy" title="复制任务命令" aria-label="复制任务命令">',
+            svgIcons.copy,
+            '</button>',
+            '</div>',
+            '<div class="command-popover__body">',
+            '<pre class="command-popover__code"></pre>',
+            '</div>'
+        ].join('');
+
+        document.body.appendChild(commandPopover);
+        commandPopoverCode = commandPopover.querySelector('.command-popover__code');
+
+        commandPopover.addEventListener('mouseenter', cancelCommandHide);
+        commandPopover.addEventListener('mouseleave', scheduleCloseCommandPopover);
+        commandPopover.addEventListener('focusout', function (event) {
+            var nextTarget = event.relatedTarget;
+            if (nextTarget && (commandPopover.contains(nextTarget) || (nextTarget.closest && nextTarget.closest('.command-cell')))) {
+                return;
+            }
+            scheduleCloseCommandPopover();
+        });
+
+        commandPopover.querySelector('.command-popover__copy').addEventListener('click', function () {
+            copyCommandText(commandPopoverCode.textContent || '');
+        });
+    }
+
+    function fallbackCopyText(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', 'readonly');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        var success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!success) {
+            throw new Error('copy failed');
+        }
+    }
+
+    async function copyCommandText(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                fallbackCopyText(text);
+            }
+            layer.msg('已复制任务命令', { icon: 1, time: 1200 });
+        } catch (error) {
+            layer.msg('复制失败，请手动选中文本复制', { icon: 2, time: 1800 });
+        }
+    }
+
+    function cancelCommandHide() {
+        if (commandHideTimer) {
+            clearTimeout(commandHideTimer);
+            commandHideTimer = null;
+        }
+    }
+
+    function scheduleCloseCommandPopover() {
+        cancelCommandHide();
+        commandHideTimer = setTimeout(closeCommandPopover, 180);
+    }
+
+    function closeCommandPopover() {
+        cancelCommandHide();
+        activeCommandCell = null;
+        if (commandPopover) {
+            commandPopover.classList.remove('is-open');
+        }
+    }
+
+    function showCommandPopover(cell) {
+        var text = getCommandTextFromCell(cell);
+        ensureCommandPopover();
+        cancelCommandHide();
+        activeCommandCell = cell;
+        commandPopoverCode.textContent = text;
+        commandPopover.classList.add('is-open');
+        positionCommandPopover(cell);
+    }
+
+    function positionCommandPopover(cell) {
+        var margin = 12;
+        var gap = 8;
+        var cellRect = cell.getBoundingClientRect();
+        var popoverRect = commandPopover.getBoundingClientRect();
+        var left = cellRect.left;
+        var top = cellRect.bottom + gap;
+
+        if (left + popoverRect.width > window.innerWidth - margin) {
+            left = window.innerWidth - popoverRect.width - margin;
+        }
+        if (top + popoverRect.height > window.innerHeight - margin) {
+            top = cellRect.top - popoverRect.height - gap;
+        }
+
+        commandPopover.style.left = Math.max(margin, Math.round(left)) + 'px';
+        commandPopover.style.top = Math.max(margin, Math.round(top)) + 'px';
     }
 
     function closeTooltip() {
@@ -664,6 +1219,116 @@ layui.use(['table', 'form', 'layer'], function () {
             if (event.target.closest('.action-icon-btn')) {
                 closeTooltip();
             }
+        });
+    }
+
+    function bindCommandPopoverEvents() {
+        document.body.addEventListener('mouseover', function (event) {
+            var cell = event.target.closest('.command-cell');
+            if (!cell || cell.contains(event.relatedTarget)) {
+                return;
+            }
+            showCommandPopover(cell);
+        });
+
+        document.body.addEventListener('mouseout', function (event) {
+            var cell = event.target.closest('.command-cell');
+            if (!cell || cell.contains(event.relatedTarget)) {
+                return;
+            }
+            if (commandPopover && commandPopover.contains(event.relatedTarget)) {
+                return;
+            }
+            scheduleCloseCommandPopover();
+        });
+
+        document.body.addEventListener('focusin', function (event) {
+            var cell = event.target.closest('.command-cell');
+            if (cell) {
+                showCommandPopover(cell);
+            }
+        });
+
+        document.body.addEventListener('focusout', function (event) {
+            var cell = event.target.closest('.command-cell');
+            if (!cell) {
+                return;
+            }
+            if (commandPopover && commandPopover.contains(event.relatedTarget)) {
+                return;
+            }
+            scheduleCloseCommandPopover();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeCommandPopover();
+            }
+        });
+
+        document.addEventListener('scroll', function (event) {
+            if (!activeCommandCell || (commandPopover && commandPopover.contains(event.target))) {
+                return;
+            }
+            closeCommandPopover();
+        }, true);
+    }
+
+    function bindTaskFilterEvents() {
+        var keywordInput = document.getElementById('taskKeyword');
+        var fieldSelect = document.getElementById('taskSearchField');
+        var statusSelect = document.getElementById('taskStatusFilter');
+        var timeoutSelect = document.getElementById('taskTimeoutFilter');
+        var cronSelect = document.getElementById('taskCronFilter');
+        var resetButton = document.getElementById('resetTaskFilters');
+
+        var applyKeywordFilter = debounce(function () {
+            filterState.keyword = keywordInput.value;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
+        }, 180);
+
+        keywordInput.addEventListener('input', applyKeywordFilter);
+
+        fieldSelect.addEventListener('change', function () {
+            filterState.field = fieldSelect.value;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
+        });
+
+        statusSelect.addEventListener('change', function () {
+            filterState.status = statusSelect.value;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
+        });
+
+        timeoutSelect.addEventListener('change', function () {
+            filterState.timeout = timeoutSelect.value;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
+        });
+
+        cronSelect.addEventListener('change', function () {
+            filterState.cron = cronSelect.value;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
+        });
+
+        resetButton.addEventListener('click', function () {
+            filterState = {
+                keyword: '',
+                field: 'all',
+                status: 'all',
+                timeout: 'all',
+                cron: 'all'
+            };
+            keywordInput.value = '';
+            fieldSelect.value = filterState.field;
+            statusSelect.value = filterState.status;
+            timeoutSelect.value = filterState.timeout;
+            cronSelect.value = filterState.cron;
+            closeCommandPopover();
+            refreshTaskTable({ resetToFirstPage: true });
         });
     }
 
@@ -958,8 +1623,7 @@ layui.use(['table', 'form', 'layer'], function () {
             field: DEFAULT_SORT.field,
             type: DEFAULT_SORT.type
         };
-        allTasks = sortTasks(allTasks);
-        reloadTable({
+        refreshTaskTable({
             initSort: getInitSort(),
             page: getPageOptions(1)
         });
@@ -976,12 +1640,15 @@ layui.use(['table', 'form', 'layer'], function () {
     });
 
     window.addEventListener('resize', debounce(function () {
+        closeCommandPopover();
         if (tableInitialized) {
             reloadTable();
         }
     }, 160));
 
     bindTooltipEvents();
+    bindCommandPopoverEvents();
+    bindTaskFilterEvents();
     loadTasks({ resetToFirstPage: true }).catch(function (error) {
         layer.msg(error.message || '加载任务列表失败', { icon: 2 });
     });
