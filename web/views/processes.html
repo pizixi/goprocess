@@ -367,6 +367,12 @@
             border-color: #f0bc3e;
         }
 
+        .status-retrying {
+            background: linear-gradient(180deg, #fff2b9 0%, #ffd96f 100%);
+            color: #8a4b00;
+            border-color: #f0bc3e;
+        }
+
         .status-stopping {
             background: linear-gradient(180deg, #ffd7d7 0%, #ffb1b1 100%);
             color: #991b1b;
@@ -391,6 +397,10 @@
             background: rgba(138, 75, 0, 0.18);
         }
 
+        .status-retrying .status-symbol {
+            background: rgba(138, 75, 0, 0.18);
+        }
+
         .status-stopping .status-symbol {
             background: rgba(153, 27, 27, 0.16);
         }
@@ -400,6 +410,7 @@
         }
 
         .status-starting .status-symbol svg,
+        .status-retrying .status-symbol svg,
         .status-stopping .status-symbol svg {
             animation: status-spin 1.1s linear infinite;
         }
@@ -629,6 +640,7 @@
                     <option value="running">运行中</option>
                     <option value="stopped">已停止</option>
                     <option value="starting">启动中</option>
+                    <option value="retrying">重试中</option>
                     <option value="stopping">停止中</option>
                     <option value="error">异常</option>
                 </select>
@@ -713,6 +725,7 @@ layui.use(['table', 'form', 'layer'], function () {
         running: { label: '运行中', className: 'status-running', icon: 'start' },
         stopped: { label: '已停止', className: 'status-stopped', icon: 'stop' },
         starting: { label: '启动中', className: 'status-starting', icon: 'loader' },
+        retrying: { label: '重试中', className: 'status-retrying', icon: 'loader' },
         stopping: { label: '停止中', className: 'status-stopping', icon: 'loader' },
         error: { label: '异常', className: 'status-error', icon: 'warning' }
     };
@@ -721,6 +734,7 @@ layui.use(['table', 'form', 'layer'], function () {
         error: 2,
         stopping: 3,
         starting: 4,
+        retrying: 4.5,
         running: 5
     };
 
@@ -946,7 +960,8 @@ layui.use(['table', 'form', 'layer'], function () {
     }
 
     function getPrimaryActionConfig(status) {
-        return String(status || '').toLowerCase() === 'running'
+        status = String(status || '').toLowerCase();
+        return (status === 'running' || status === 'starting' || status === 'retrying' || status === 'stopping')
             ? { eventName: 'stop', tip: '停止', iconName: 'stop', className: 'action-stop' }
             : { eventName: 'start', tip: '启动', iconName: 'start', className: 'action-start' };
     }
@@ -1340,6 +1355,14 @@ layui.use(['table', 'form', 'layer'], function () {
                 layer.msg('进程正在启动中', { icon: 2 });
                 return;
             }
+            if (status === 'retrying') {
+                layer.msg('进程正在重试中', { icon: 2 });
+                return;
+            }
+            if (status === 'stopping') {
+                layer.msg('进程正在停止中', { icon: 2 });
+                return;
+            }
 
             await requestJSON('/api/process/' + id + '/start', { method: 'POST' });
             layer.msg('进程已开始启动', { icon: 1 });
@@ -1392,7 +1415,7 @@ layui.use(['table', 'form', 'layer'], function () {
         try {
             var process = await getProcess(id);
             var status = String(process.Status || '').toLowerCase();
-            if (status === 'running' || status === 'starting' || status === 'stopping') {
+            if (status === 'running' || status === 'starting' || status === 'retrying' || status === 'stopping') {
                 layer.msg('请先停止进程后再删除', { icon: 2 });
                 return;
             }

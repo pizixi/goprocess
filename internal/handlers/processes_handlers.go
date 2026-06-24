@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/pizixi/goprocess/internal/models"
 	"github.com/pizixi/goprocess/internal/services"
-	"github.com/pizixi/goprocess/internal/websocket"
 	"github.com/pizixi/goprocess/pkg/utils"
 )
 
@@ -36,7 +35,7 @@ func (h *ProcessHandler) ListProcessesHandler(c echo.Context) error {
 
 func (h *ProcessHandler) GetProcessHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
@@ -63,29 +62,32 @@ func (h *ProcessHandler) CreateProcessHandler(c echo.Context) error {
 func (h *ProcessHandler) UpdateProcessHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
-	if err := c.Bind(&rp.Process); err != nil {
+	process := rp.Process
+	if err := c.Bind(&process); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	if err := h.PM.UpdateProcess(ctx, &rp.Process); err != nil {
+	process.ID = uint(id)
+	if err := h.PM.UpdateProcess(ctx, &process); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update process"})
 	}
-	return c.JSON(http.StatusOK, rp)
+	updated, _ := h.PM.GetSnapshot(uint(id))
+	return c.JSON(http.StatusOK, updated)
 }
 
 func (h *ProcessHandler) DeleteProcessHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
 
-	if rp.Status == "running" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Process is still running. Please stop it first."})
+	if models.IsActiveStatus(rp.Status) {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Process is active. Please stop it first."})
 	}
 
 	if err := h.PM.DeleteProcess(ctx, uint(id)); err != nil {
@@ -96,7 +98,7 @@ func (h *ProcessHandler) DeleteProcessHandler(c echo.Context) error {
 
 func (h *ProcessHandler) StartProcessHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
@@ -106,14 +108,16 @@ func (h *ProcessHandler) StartProcessHandler(c echo.Context) error {
 	}
 
 	h.PM.SetManualStop(uint(id), false)
-	go h.PS.StartProcessById(uint(id))
+	if err := h.PS.StartProcessAsync(uint(id)); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "starting", "message": "Process is being started"})
 }
 
 func (h *ProcessHandler) StopProcessHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
@@ -121,19 +125,23 @@ func (h *ProcessHandler) StopProcessHandler(c echo.Context) error {
 	if rp.Status == "stopped" {
 		return c.JSON(http.StatusOK, map[string]string{"status": "stopped", "message": "Process already stopped"})
 	}
+	if rp.Status == "stopping" {
+		return c.JSON(http.StatusOK, map[string]string{"status": "stopping", "message": "Process is already stopping"})
+	}
+	if rp.Status == "error" {
+		return c.JSON(http.StatusOK, map[string]string{"status": "error", "message": "Process is already in error state"})
+	}
 
-	h.PM.UpdateProcessStatus(uint(id), "stopping", rp.PID)
-	h.PM.SetManualStop(uint(id), true)
-	websocket.BroadcastStatus(*rp)
-
-	go h.PS.StopProcessByID(uint(id))
+	if err := h.PS.StopProcessAsync(uint(id)); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "stopping", "message": "Process is being stopped"})
 }
 
 func (h *ProcessHandler) RestartProcessHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
@@ -151,7 +159,7 @@ func (h *ProcessHandler) RestartProcessHandler(c echo.Context) error {
 
 func (h *ProcessHandler) GetProcesseLogsHandler(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	rp, exists := h.PM.GetProcess(uint(id))
+	rp, exists := h.PM.GetSnapshot(uint(id))
 	if !exists {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Process not found"})
 	}
